@@ -150,7 +150,7 @@ LOG.set_format(Format::LevelFlag | Format::Time | Format::ShortFileName)
 
 - `{message}`: Log content.
 
-  ** Example:**
+######   Example:
 
 ```rust
    LOG.set_formatter("{message} | {time} {file}{level}\n")
@@ -168,7 +168,8 @@ LOG.set_format(Format::LevelFlag | Format::Time | Format::ShortFileName)
    - Maximum backup count
    - Compression option
 
-   Example:
+######   Example:
+
 ```rust
    let mut log = Logger::new(); 
    log.set_cutmode_by_time("/usr/local/tklogs.log", MODE::DAY, 0, false);
@@ -197,7 +198,7 @@ Utilize `.set_cutmode_by_size()` with the following parameters:
 - Max backups
 - Compress backups
 
-Example:
+######   Example:
 
 ```rust
 let mut log = Logger::new(); 
