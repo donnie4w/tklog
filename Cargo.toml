@@ -1,0 +1,29 @@
+[package]
+name = "tklog"
+version = "0.0.1"
+edition = "2021"
+authors = ["donnie4w <donnie4w@gmail.com>"]
+description = "Lightweight and efficient rust structured log library with support for log level, file shred, compressed archive"
+homepage = "https://github.com/donnie4w/tklog"
+documentation = "https://docs.rs/tklog" 
+readme = "README.md"
+keywords = ["log",  "logger","tracing ","logging"]
+categories = ["logging"] 
+license = "Apache-2.0"
+repository = "https://github.com/donnie4w/tklog"
+
+
+include = [
+    "src/**/*.rs",
+    "Cargo.toml",
+    "README.md",
+    "LICENSE",
+]
+
+[dependencies]
+tokio = { version = "1.37.0", features = ["full"] }
+chrono = "0.4.38"
+once_cell = "1.19.0"
+flate2 = "1.0"
+crossbeam-channel = "0.5.13"
+regex = "1.10.4"
