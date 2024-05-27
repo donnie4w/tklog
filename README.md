@@ -61,69 +61,7 @@ fn log_init() {
 ```
 This illustrates global, singleton-style logging setup. Additionally, tklog facilitates custom multi-instance logging configurations, useful in systems requiring distinct logging structures across different components.
 
-
-### tklog is a high-performance structured logging library  for Rust
-
-###### tklog featuring ease-of-use, efficiency, and a rich feature suite. It supports functionalities such as console logging, file logging, both synchronous and asynchronous logging modes, alongside advanced capabilities like log slicing by time or size and compressed backup of log files.
-
-#### Features
-- Function support includes console logging, file logging, synchronous logging, asynchronous logging.
-- Log level settings mirror those of the standard library: trace, debug, info, warn, error, fatal.
-- Formatted output with customizable formats that can include log level flags, formatted timestamps, and log file locations.
-- Log file slicing by time intervals: hourly, daily, or monthly.
-- Log file slicing by specified file size.
-- File rolling mechanism that automatically deletes older log files once a maximum backup count is reached to prevent excess logs from accumulating.
-- Compression of archived backup log files.
-
 ------------
-
-### Simple Usage Description
-
-The simplest way to use tklog involves direct macro calls:
-
-```rust
-use tklog::{trace, debug, error, fatal, info, warn};
-fn testlog() {
-    trace!("trace>>>>", "aaaaaaaaa", 1, 2, 3, 4);
-    debug!("debug>>>>", "bbbbbbbbb", 1, 2, 3, 5);
-    info!("info>>>>", "ccccccccc", 1, 2, 3, 5);
-    warn!("warn>>>>", "dddddddddd", 1, 2, 3, 6);
-    error!("error>>>>", "eeeeeeee", 1, 2, 3, 7);
-    fatal!("fatal>>>>", "ffffffff", 1, 2, 3, 8);
-}
-```
-By default, this will print to the console without writing to a file. An example output could resemble:
-
-```
-[TRACE] 2024-05-26 11:47:22 testlog.rs 27:trace>>>>,aaaaaaaaa,1,2,3,4
-[DEBUG] 2024-05-26 11:47:22 testlog.rs 28:debug>>>>,bbbbbbbbb,1,2,3,5
-[INFO] 2024-05-26 11:47:22 testlog.rs 29:info>>>>,ccccccccc,1,2,3,5
-[WARN] 2024-05-26 11:47:22 testlog.rs 30:warn>>>>,dddddddddd,1,2,3,6
-[ERROR] 2024-05-26 11:47:22 testlog.rs 31:error>>>>,eeeeeeee,1,2,3,7
-[FATAL] 2024-05-26 11:47:22 testlog.rs 32:fatal>>>>,ffffffff,1,2,3,8
-```
-
-For initialization and customization, tklog furnishes methods to configure options such as console output, log levels, formatting styles, cutting strategies, and custom formatters.
-
-```rust
-use tklog::{
-    sync::Logger,
-    tklog::{LEVEL, LOG},
-    Format, MODE,
-};
-
-fn log_init() {
-    LOG.set_console(true)       // Enables console logging
-        .set_level(LEVEL::Info)  // Sets the log level; default is Debug
-        .set_format(Format::LevelFlag | Format::Time | Format::ShortFileName)  // Defines structured log output with chosen details
-        .set_cutmode_by_size("tklogsize.txt", 1<<20, 10, true)  // Cuts logs by file size (1 MB), keeps 10 backups, compresses backups
-        .set_formatter("{level}{time} {file}:{message}\n");   // Customizes log output format; default is "{level}{time} {file}:{message}"
-}
-```
-This illustrates global, singleton-style logging setup. Additionally, tklog facilitates custom multi-instance logging configurations, useful in systems requiring distinct logging structures across different components.
-
-------------
-
 
 ### Multi-Instance Logging
 
