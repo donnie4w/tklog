@@ -235,7 +235,7 @@ tklogs_3.log.gz
 
 ```rust
 use tklog::{
-    async_debug, async_error, async_fatal, async_info, async_trace, async_warn, tklog::LEVEL, Format, ASYNC_LOG
+    async_debug, async_error, async_fatal, async_info, async_trace, async_warn, LEVEL, Format, ASYNC_LOG
 };
 
 async fn async_log_init() {
