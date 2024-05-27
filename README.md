@@ -31,7 +31,7 @@ fn testlog() {
     fatal!("fatal>>>>", "ffffffff", 1, 2, 3, 8);
 }
 ```
-By default, this will print to the console without writing to a file. An example output could resemble:
+###### By default, it will print console log, not files. Execution Result:
 
 ```
 [TRACE] 2024-05-26 11:47:22 testlog.rs 27:trace>>>>,aaaaaaaaa,1,2,3,4
@@ -42,7 +42,7 @@ By default, this will print to the console without writing to a file. An example
 [FATAL] 2024-05-26 11:47:22 testlog.rs 32:fatal>>>>,ffffffff,1,2,3,8
 ```
 
-For initialization and customization, tklog furnishes methods to configure options such as console output, log levels, formatting styles, cutting strategies, and custom formatters.
+###### For initialization and customization, tklog furnishes methods to configure options such as console output, log levels, formatting styles, cutting strategies, and custom formatters.
 
 ```rust
 use tklog::{
@@ -109,22 +109,22 @@ fatals>>>>,FFFFFFFF,1,2,3,8 | 2024-05-26 14:13:25 testlog.rs 74[FATAL]
 
 ### Detailed Usage Guide
 
-1. **Log Levels:** Trace < Debug < Info < Warn < Error < Fatal.
+#### 1. Log Levels: Trace < Debug < Info < Warn < Error < Fatal.
 
    Example:
-   ```rust
+```rust
    LOG.set_level(LEVEL::Info) //Sets the log level to Info
-   ```
+```
 
-2. **Console Logging:** Enable or disable via `.set_console(bool)`.
+#### 2. Console Logging: Enable or disable via `.set_console(bool)`.
 
-   ```rust
+```rust
    LOG.set_console(false) //Disables console logging (default is true)
-   ```
+```
 
-3. **Log Formats:**
+#### 3. Log Formats:
 
-   ```rust
+```rust
      Format::Nano ： No formatting
      Format::Date  ： Outputs date (e.g., 2024-05-26)
 	 Format::Time  ： Outputs time to seconds (e.g., 14:13:25)
@@ -132,15 +132,16 @@ fatals>>>>,FFFFFFFF,1,2,3,8 | 2024-05-26 14:13:25 testlog.rs 74[FATAL]
 	 Format::LongFileName ：Full file path with line number (e.g., tests/testlog.rs 25)
 	 Format::ShortFileName ： Abbreviated file path with line number (e.g., testlog.rs 25)
 	 Format::LevelFlag ： Log level marker (e.g., [Debug]).
-	 
-   ```
-   For custom formats:
-   ```rust
-   LOG.set_format(Format::LevelFlag | Format::Time | Format::ShortFileName)
-   ```
+```
 
-4. **Custom Format Strings:**
-   
+   For custom formats:
+
+```rust
+   LOG.set_format(Format::LevelFlag | Format::Time | Format::ShortFileName)
+```
+
+#### 4. Custom Format Strings:
+
    Default is "{level}{time} {file}:{message}\n".
 
 	-    `{level}`: Log level indicator, e.g., [Debug].
@@ -149,14 +150,15 @@ fatals>>>>,FFFFFFFF,1,2,3,8 | 2024-05-26 14:13:25 testlog.rs 74[FATAL]
 	-    `{message}`: Log content.
 
    Example:
-   ```rust
+
+```rust
    LOG.set_formatter("{message} | {time} {file}{level}\n")
-   ```
+```
 
    Reminder: Text outside the `{level}`, `{time}`, `{file}`, and `{message}` tags is output verbatim, including delimiters, spaces, and newlines.
 
-5. **Time-Based Log File Rotation:**
-   
+####  5. Time-Based Log File Rotation:
+
    Modes: `MODE::HOUR`, `MODE::DAY`, `MODE::MONTH`.
 
    Use `.set_cutmode_by_time()` with:
@@ -166,10 +168,10 @@ fatals>>>>,FFFFFFFF,1,2,3,8 | 2024-05-26 14:13:25 testlog.rs 74[FATAL]
    - Compression option
 
    Example:
-   ```rust
+```rust
    let mut log = Logger::new(); 
    log.set_cutmode_by_time("/usr/local/tklogs.log", MODE::DAY, 0, false);
-   ```
+```
 
    This configures the log to be stored at `/usr/local/tklogs.log`, rotated daily, with no limit on backups, and without compressing daily logs.
 
@@ -185,7 +187,7 @@ fatals>>>>,FFFFFFFF,1,2,3,8 | 2024-05-26 14:13:25 testlog.rs 74[FATAL]
 	- `tklogs_202403.log`
 	- `tklogs_202404.log`
 
-**6. Size-Based Log File Rotation:**
+#### 6. Size-Based Log File Rotation:
 
 Utilize `.set_cutmode_by_size()` with the following parameters:
 
@@ -333,5 +335,3 @@ Found 2 outliers among 100 measurements (2.00%)
 ###### Explanation: The test runs ranged from 3.8377 microseconds to 3.9408 microseconds, covering an approximate distribution where 3.8881 microseconds is approximately the average or median execution time over this period
 
 **Conclusion: Log printing function performance: 3µs /op - 4µs /op (microsecond/time)**
-
-
