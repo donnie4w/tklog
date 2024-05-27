@@ -123,31 +123,34 @@ fatals>>>>,FFFFFFFF,1,2,3,8 | 2024-05-26 14:13:25 testlog.rs 74[FATAL]
 #### 3. Log Formats:
 
 ```rust
-     Format::Nano ： No formatting
-     Format::Date  ： Outputs date (e.g., 2024-05-26)
-	 Format::Time  ： Outputs time to seconds (e.g., 14:13:25)
-	 Format::Microseconds ：Outputs time with microseconds (e.g., 18:09:17.462245)
-	 Format::LongFileName ：Full file path with line number (e.g., tests/testlog.rs 25)
-	 Format::ShortFileName ： Abbreviated file path with line number (e.g., testlog.rs 25)
-	 Format::LevelFlag ： Log level marker (e.g., [Debug]).
+Format::Nano ： No formatting
+Format::Date  ： Outputs date (e.g., 2024-05-26)
+Format::Time  ： Outputs time to seconds (e.g., 14:13:25)
+Format::Microseconds ：Outputs time with microseconds (e.g., 18:09:17.462245)
+Format::LongFileName ：Full file path with line number (e.g., tests/testlog.rs 25)
+Format::ShortFileName ： Abbreviated file path with line number (e.g., testlog.rs 25)
+Format::LevelFlag ： Log level marker (e.g., [Debug]).
 ```
 
    For custom formats:
 
 ```rust
-   LOG.set_format(Format::LevelFlag | Format::Time | Format::ShortFileName)
+LOG.set_format(Format::LevelFlag | Format::Time | Format::ShortFileName)
 ```
 
 #### 4. Custom Format Strings:
 
-   Default is "{level}{time} {file}:{message}\n".
+ Default is "{level}{time} {file}:{message}\n".
 
-	-    `{level}`: Log level indicator, e.g., [Debug].
-	-    `{time}`: Logged timestamp.
-	-    `{file}`: Filename and line number.
-	-    `{message}`: Log content.
+-  `{level}`: Log level indicator, e.g., [Debug].
 
-   Example:
+-  `{time}`: Logged timestamp.
+
+-  `{file}`: Filename and line number.
+
+- `{message}`: Log content.
+
+  ** Example:**
 
 ```rust
    LOG.set_formatter("{message} | {time} {file}{level}\n")
