@@ -68,16 +68,6 @@ impl ErrCode {
     }
 }
 
-pub struct AA;
-impl AA {
-    pub fn set_level(&self, level: LEVEL) -> &Self {
-        unsafe {
-            tklog::synclog.set_level(level);
-        }
-        self
-    }
-}
-
 pub const LOG: Lazy<sync::Log> = Lazy::new(|| sync::Log::new());
 pub const ASYNC_LOG: Lazy<Async::Log> = Lazy::new(|| Async::Log::new());
 
