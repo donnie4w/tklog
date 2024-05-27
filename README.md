@@ -1,5 +1,5 @@
 
-### tklog is a high-performance structured logging library  for Rust  [[中文]](https://github.com/donnie4w/tklog/blob/main/README_zh.md "[中文]")
+### tklog is a high-performance structured logging library  for Rust  [[中文]](https://github.com/donnie4w/tklog/blob/main/README_ZH.md "[中文]")
 
 ###### tklog featuring ease-of-use, efficiency, and a rich feature suite. It supports functionalities such as console logging, file logging, both synchronous and asynchronous logging modes, alongside advanced capabilities like log slicing by time or size and compressed backup of log files.
 
@@ -12,7 +12,7 @@
 - File rolling mechanism that automatically deletes older log files once a maximum backup count is reached to prevent excess logs from accumulating.
 - Compression of archived backup log files.
 
-###[official website](https://tlnet.top/tklogen "official website")
+### [official website](https://tlnet.top/tklogen "official website")
 
 ------------
 
