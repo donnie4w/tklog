@@ -46,8 +46,7 @@ fn testlog() {
 
 ```rust
 use tklog::{
-    sync::Logger,
-    tklog::{LEVEL, LOG},
+    sync::Logger,LEVEL, LOG,
     Format, MODE,
 };
 
@@ -70,8 +69,7 @@ This illustrates global, singleton-style logging setup. Additionally, tklog faci
 ```rust
 use tklog::{
     debugs, errors, fatals, infos,
-    sync::Logger,
-    tklog::{LEVEL, LOG},
+    sync::Logger,LEVEL, LOG,
     traces, warns, Format, MODE,
 };
 fn testmutlilog() {
@@ -276,7 +274,7 @@ async fn testlog() {
 use std::sync::Arc;
 
 use tklog::{
-    async_debugs, async_errors, async_fatals, async_infos, async_traces, async_warns, tklog::LEVEL, Format, ASYNC_LOG, MODE
+    async_debugs, async_errors, async_fatals, async_infos, async_traces, async_warns, LEVEL, Format, ASYNC_LOG, MODE
 };
 
 #[tokio::test]
