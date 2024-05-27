@@ -45,8 +45,7 @@ fn testlog() {
 
 ```rust
 use tklog::{
-    sync::Logger,
-    tklog::{LEVEL, LOG},
+    sync::Logger,LEVEL, LOG,
     Format,MODE,
 };
 
@@ -66,8 +65,7 @@ fn log_init() {
 ```rust
 use tklog::{
     debugs, errors, fatals, infos,
-    sync::Logger,
-    tklog::{LEVEL, LOG},
+    sync::Logger,LEVEL, LOG,
     traces, warns, Format, MODE,
 };
 fn testmutlilog() {
@@ -219,7 +217,7 @@ fatals>>>>,FFFFFFFF,1,2,3,8 | 2024-05-26 14:13:25 testlog.rs 74[FATAL]
 
 ```rust
 use tklog::{
-    async_debug,  async_error,  async_fatal,  async_info,  async_trace,  async_warn,  tklog::LEVEL, Format, ASYNC_LOG
+    async_debug,  async_error,  async_fatal,  async_info,  async_trace,  async_warn,  LEVEL, Format, ASYNC_LOG
  };
 
 async fn async_log_init() {
@@ -262,7 +260,7 @@ async fn testlog() {
 use std::sync::Arc;
 
 use tklog::{
-     async_debugs,  async_errors,  async_fatals,  async_infos,  async_traces,  async_warns, tklog::LEVEL, Format, ASYNC_LOG, MODE
+     async_debugs,  async_errors,  async_fatals,  async_infos,  async_traces,  async_warns, LEVEL, Format, ASYNC_LOG, MODE
 };
 #[tokio::test]
 async fn testmultilogs() {
