@@ -5,7 +5,7 @@
 
 #####   特性
 
-- 功能全面：控制台日志、文件日志、同步打印、异步打印
+- 功能：控制台日志、文件日志、同步打印、异步打印
 - 日志级别配置灵活：支持 `trace`、`debug`、`info`、`warn`、`error`、`fatal` 级别的日志输出
 - 格式化输出自定义：可调整日志输出格式，涵盖日志级别标签、时间格式、文件位置等元素
 - 按时间切割日志文件：支持按小时、天、月进行日志文件分割
@@ -30,7 +30,7 @@ fn testlog() {
     fatal!("fatal>>>>", "ffffffff", 1, 2, 3, 8);
 }
 ```
-说明：默认打开控制台日志，没有写日志文件。打印结果：
+###### 说明：默认打开控制台日志，没有写日志文件。打印结果：
 
 ```
 [TRACE] 2024-05-26 11:47:22 testlog.rs 27:trace>>>>,aaaaaaaaa,1,2,3,4
@@ -41,7 +41,7 @@ fn testlog() {
 [FATAL] 2024-05-26 11:47:22 testlog.rs 32:fatal>>>>,ffffffff,1,2,3,8
 ```
 
-**说明：直接调用 debug！等宏进行打印，默认调用全局静态LOG对象。LOG对象支持初始化 **
+###### 说明：直接调用 debug！等宏进行打印，默认调用全局静态LOG对象。LOG对象支持初始化
 
 ```rust
 use tklog::{
@@ -104,16 +104,19 @@ fatals>>>>,FFFFFFFF,1,2,3,8 | 2024-05-26 14:13:25 testlog.rs 74[FATAL]
 
 ### tklog使用详细说明
 
-1. 日志级别 ： Trace < Debug < Info < Warn < Error < Fatal
+#### 1. 日志级别 ： Trace < Debug < Info < Warn < Error < Fatal
 
  **示例**
 
 		LOG.set_level(LEVEL::Info)  //日志级别，设置为Info
-2. 控制台日志
+
+#### 2. 控制台日志
+
 **调用 .set_console(bool) 函数**
 
 		LOG.set_console(false)   // false表示不打印控制台日志。默认为true
-3. 日志格式
+
+#### 3. 日志格式
 
 	- Format::Nano                            无格式
 	- Format::Date                             输出日期 ：2024-05-26
@@ -125,7 +128,7 @@ fatals>>>>,FFFFFFFF,1,2,3,8 | 2024-05-26 14:13:25 testlog.rs 74[FATAL]
 
  `LOG.set_format(Format::LevelFlag | Format::Time | Format::ShortFileName) ` 
 
-4.自定义格式输出
+####  4.自定义格式输出
 
 **默认："{level}{time} {file}:{message} "**
 
@@ -139,7 +142,7 @@ fatals>>>>,FFFFFFFF,1,2,3,8 | 2024-05-26 14:13:25 testlog.rs 74[FATAL]
 
 ###### 说明：除了关键标识 {message}  {time}  {file}  {level} 外，其他内容原样输出，如 | ， 空格，换行  等。
 
-5.按时间分割日志文件
+####  5.按时间分割日志文件
 
 ###### 时间标识：`MODE::HOUR`，`MODE::DAY`，`MODE::MONTH`
 
@@ -171,7 +174,7 @@ fatals>>>>,FFFFFFFF,1,2,3,8 | 2024-05-26 14:13:25 testlog.rs 74[FATAL]
 	- tklogs_202403.log
 	- tklogs_202404.log
 
-6.按大小分割日志文件
+#### 6.按大小分割日志文件
 
 **调用 .set_cutmode_by_size() 函数，参数：**
 
@@ -195,40 +198,20 @@ fatals>>>>,FFFFFFFF,1,2,3,8 | 2024-05-26 14:13:25 testlog.rs 74[FATAL]
 
 ------------
 
-##### tklog提供常规日志打印 方法为：
+#### tklog提供常规日志打印 方法为：
 
 - **全局单例打印**
-	-  trace!
-	-  debug!
-	-  info!
-	-  warn!
-	-  error!
-	-  fatal!
+	-  `trace!` `debug!` `info!`  `warn!`  `error!`  `fatal!`
 - **多实例打印**
-	-  traces!
-	-  debugs!
-	-  infos!
-	-  warns!
-	-  errors!
-	-  fatals!
+	-  `traces!` `debugs!` `infos!`  `warns!`  `errors!`  `fatals!`
 
 
 ### 异步日志
 
-- 全局异步单例打印
-	-  async_trace!
-	-  async_debug!
-	-  async_info!
-	-  async_warn!
-	-  async_error!
-	-  async_fatal!
-- 多实例异步打印
-	-  async_traces!
-	-  async_debugs!
-	-  async_infos!
-	-  async_warns!
-	-  async_errors!
-	-  async_fatals!
+- **全局异步单例打印**
+	-  `async_trace!` `async_debug!` `async_info!` `async_warn!` `async_error!` `async_fatal!`
+- **多实例异步打印**
+	-  `async_traces!` `async_debugs!` `async_infos!` `async_warns!` `async_errors!` `async_fatals!`
 
 ##### 示例
 
@@ -262,7 +245,7 @@ async fn testlog() {
 }
 ```
 
-**输出结果：**
+##### 输出结果:
 
 ```text
 [TRACE] 20:03:32 testasynclog.rs 20:trace>>>>,aaaaaaa,1,2,3
@@ -302,7 +285,7 @@ async fn testmultilogs() {
     tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
 }
 ```
-**输出结果：**
+##### 输出结果:
 
 ```text
 async_debugs>>>>,BBBBBBBBBB,1,2,3 | 2024-05-26 20:10:24 testasynclog.rs 45[DEBUG]
