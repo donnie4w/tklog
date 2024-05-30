@@ -1,112 +1,45 @@
-use std::{
-    borrow::BorrowMut,
-    sync::{Arc, Mutex},
-    thread,
-    time::{Duration, Instant},
-};
+use std::{thread, time::Duration};
 
-use tklog::{
-    debug, debugs, error, errors, fatal, fatals, info, infos, sync::Logger, tklog::LEVEL, trace,
-    traces, warn, warns, Format, LOG, MODE,
-};
+use tklog::{ASYNC_LOG, Format, LEVEL, LOG};
 
-fn log_init() {
+#[test]
+fn log_syncinit() {
     LOG.set_console(true)
+        .set_level(LEVEL::Debug)
+        .set_format(Format::LevelFlag | Format::Microseconds | Format::ShortFileName)
+        .set_cutmode_by_size("logsize.log", 10000, 10, true)
+        .set_formatter("{level}{time} {file}:{message}\n").uselog();
+}
+
+
+#[test]
+fn testsynclog() {
+    log_syncinit();
+    log::trace!("trace>>>>{}{}{}{}{}", "aaaaaaaaa", 1, 2, 3, 4);
+    log::debug!("debug>>>>{}{}",1,2);
+    log::info!("info log");
+    log::warn!("warn log");
+    log::error!("error log");
+    thread::sleep(Duration::from_secs(1))
+}
+
+async fn log_asyncinit() {
+    ASYNC_LOG.set_console(true)
         .set_level(LEVEL::Trace)
-        .set_format(Format::LevelFlag | Format::Microseconds | Format::LongFileName)
-        .set_cutmode_by_size("tklogsize.txt", 10000, 10, true)
-        .set_formatter("{level}{time} {file}:{message}\n");
+        .set_format(Format::LevelFlag | Format::Time |Format::Date)
+        .set_formatter("{level}{time} {file}:{message}\n")
+        .set_cutmode_by_size("asynclogsize.log", 10000, 10, true).await
+        .uselog();
 }
 
-#[test]
-fn testlog() {
-    log_init();
-    trace!("trace>>>>", "aaaaaaaaa", 1, 2, 3, 4);
-    debug!("debug>>>>", "bbbbbbbbb", 1, 2, 3, 5);
-    info!("info>>>>", "ccccccccc", 1, 2, 3, 5);
-    warn!("warn>>>>", "dddddddddd", 1, 2, 3, 6);
-    error!("error>>>>", "eeeeeeee", 1, 2, 3, 7);
-    fatal!("fatal>>>>", "ffffffff", 1, 2, 3, 8);
-    thread::sleep(Duration::from_secs(1))
-}
 
-#[test]
-fn testthreads() {
-    log_init();
-    let handles: Vec<_> = (0..100)
-        .map(|i| {
-            thread::spawn(move || {
-                debug!("testthreads", i, format!("{:?}", Instant::now()));
-            })
-        })
-        .collect();
-
-    for handle in handles {
-        handle.join().unwrap();
-    }
-}
-
-#[test]
-fn testmultilog() {
-    let mut log = Logger::new();
-    log.set_console(true)
-        .set_level(LEVEL::Debug)
-        .set_cutmode_by_time("tklogs.log", MODE::DAY, 10, true)
-        .set_formatter("{message} | {time} {file}{level}\n");
-    let mut logger = Arc::clone(&Arc::new(Mutex::new(log)));
-    let log = logger.borrow_mut();
-    traces!(log, "traces>>>>", "AAAAAAAAA", 1, 2, 3, 4);
-    debugs!(log, "debugs>>>>", "BBBBBBBBB", 1, 2, 3, 5);
-    infos!(log, "infos>>>>", "CCCCCCCCC", 1, 2, 3, 5);
-    warns!(log, "warns>>>>", "DDDDDDDDDD", 1, 2, 3, 6);
-    errors!(log, "errors>>>>", "EEEEEEEE", 1, 2, 3, 7);
-    fatals!(log, "fatals>>>>", "FFFFFFFF", 1, 2, 3, 8);
-    thread::sleep(Duration::from_secs(1))
-}
-
-#[test]
-fn testlogssize() {
-    let mut log = Logger::new();
-    log.set_console(true)
-        .set_level(LEVEL::Debug)
-        .set_cutmode_by_size("tklogsize.log", 10 << 20, 10, false);
-    let logger = Arc::new(Mutex::new(log));
-    let handles: Vec<_> = (0..10)
-        .map(|i| {
-            let mut log = logger.clone();
-            thread::spawn(move || {
-                let logmut = log.borrow_mut();
-                for _ in 0..10 {
-                    debugs!(logmut, "debugs>>>>", "thread>>", i);
-                }
-            })
-        })
-        .collect();
-
-    for handle in handles {
-        handle.join().unwrap();
-    }
-}
-
-#[test]
-fn testlogstime() {
-    let mut log = Logger::new();
-    log.set_console(true)
-        .set_level(LEVEL::Debug)
-        .set_cutmode_by_time("tklogtime.log", MODE::DAY, 10, false);
-    let logger = Arc::new(Mutex::new(log));
-    let handles: Vec<_> = (0..10)
-        .map(|i| {
-            let mut log = logger.clone();
-            thread::spawn(move || {
-                let logmut = log.borrow_mut();
-                for _ in 0..10 {
-                    debugs!(logmut, "debugs>>>>", "thread>>", i);
-                }
-            })
-        })
-        .collect();
-    for handle in handles {
-        handle.join().unwrap();
-    }
+#[tokio::test]
+async fn testasynclog() {
+    crate::log_asyncinit().await;
+    log::trace!("trace async log>>>>{}{}{}{}{}", "aaaaaaaaa", 1, 2, 3, 4);
+    log::debug!("debug async log>>>>{}{}",1,2);
+	log::info!("info async log");
+    log::warn!("warn async log");
+    log::error!("error async log");
+    tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
 }
