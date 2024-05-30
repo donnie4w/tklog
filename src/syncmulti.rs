@@ -18,7 +18,7 @@
 #[macro_export]
 macro_rules! traces {
     ($logger:expr, $($arg:expr),+) => {
-        $crate::logs_common!($logger, $crate::tklog::LEVEL::Trace, $($arg),*);
+        $crate::logs_common!($logger, $crate::LEVEL::Trace, $($arg),*);
     };
     () => {};
 }
@@ -27,7 +27,7 @@ macro_rules! traces {
 #[macro_export]
 macro_rules! debugs {
     ($logger:expr, $($arg:expr),+) => {
-        $crate::logs_common!($logger, $crate::tklog::LEVEL::Debug, $($arg),*);
+        $crate::logs_common!($logger, $crate::LEVEL::Debug, $($arg),*);
     };
     () => {};
 }
@@ -36,7 +36,7 @@ macro_rules! debugs {
 #[macro_export]
 macro_rules! infos {
     ($logger:expr, $($arg:expr),+) => {
-        $crate::logs_common!($logger, $crate::tklog::LEVEL::Info, $($arg),*);
+        $crate::logs_common!($logger, $crate::LEVEL::Info, $($arg),*);
     };
     () => {};
 }
@@ -45,7 +45,7 @@ macro_rules! infos {
 #[macro_export]
 macro_rules! warns {
     ($logger:expr, $($arg:expr),+) => {
-        $crate::logs_common!($logger, $crate::tklog::LEVEL::Warn, $($arg),*);
+        $crate::logs_common!($logger, $crate::LEVEL::Warn, $($arg),*);
     };
     () => {};
 }
@@ -54,7 +54,7 @@ macro_rules! warns {
 #[macro_export]
 macro_rules! errors {
     ($logger:expr, $($arg:expr),+) => {
-        $crate::logs_common!($logger, $crate::tklog::LEVEL::Error, $($arg),*);
+        $crate::logs_common!($logger, $crate::LEVEL::Error, $($arg),*);
     };
     () => {};
 }
@@ -63,7 +63,7 @@ macro_rules! errors {
 #[macro_export]
 macro_rules! fatals {
     ($logger:expr, $($arg:expr),+) => {
-        $crate::logs_common!($logger, $crate::tklog::LEVEL::Fatal, $($arg),*);
+        $crate::logs_common!($logger, $crate::LEVEL::Fatal, $($arg),*);
     };
     () => {};
 }
