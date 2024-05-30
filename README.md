@@ -315,6 +315,61 @@ async_fatals>>>>,FFFFFFFFFFFF,1,2,3 | 2024-05-26 20:10:24 testasynclog.rs 49[FAT
 ------------
 
 
+### Supports the official log library standard API
+
+1.  tklog implements the regular use of the official Log interface API
+2.  Implement the official log library API to be used in asynchronous scenarios
+
+##### How to enable the official log library API： 
+
+###### tklog enables API support for official logs by calling the `uselog()` function
+
+
+###### Use example
+
+```rust
+use std::{thread, time::Duration};
+use tklog::{Format, LEVEL, LOG};
+fn test_synclog() {
+    //init  LOG
+    LOG.set_console(true)
+        .set_level(LEVEL::Debug)
+        .set_cutmode_by_size("logsize.log", 10000, 10, true)
+        .uselog();  //Enable the official log library
+	
+	log::trace!("trace>>>>{}{}{}{}{}", "aaaa", 1, 2, 3, 4);
+	log::debug!("debug>>>>{}{}",1,2);
+    log::info!("info log");
+    log::warn!("warn log");
+    log::error!("error log");
+	thread::sleep(Duration::from_secs(1))
+}
+```
+
+
+####  Enable the log library API in asynchronous scenarios
+
+```rust
+use std::{thread, time::Duration};
+use tklog::{Format, LEVEL, ASYNC_LOG};
+async fn test_synclog() {
+    //init ASYNC  LOG 
+    ASYNC_LOG.set_console(false)
+        .set_cutmode_by_size("asynclogsize.log", 10000, 10, true).await
+        .uselog(); //Enable the official log library
+	
+    log::trace!("trace async log>>>>{}{}{}{}{}", "aaaaaaaaa", 1, 2, 3, 4);
+    log::debug!("debug async log>>>>{}{}",1,2);
+	log::info!("info async log");
+    log::warn!("warn async log");
+    log::error!("error async log");
+    tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+}
+```
+
+------------
+
+
 ### Benchmark Test
 
 ```text
