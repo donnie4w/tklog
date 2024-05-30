@@ -15,10 +15,13 @@
 // limitations under the License.
 
 use crate::{
+    arguments_to_string,
     handle::{FileSizeMode, FileTimeMode, Handle, Handler},
+    l2tk,
     syncfile::FileHandler,
-    tklog::{synclog, LEVEL, PRINTMODE},
-    MODE,
+    tk2l,
+    tklog::synclog,
+    LEVEL, MODE, PRINTMODE, TKLOG2SYNCLOG,
 };
 use crossbeam_channel::{unbounded, Sender};
 use std::sync::Mutex;
@@ -35,8 +38,8 @@ use std::thread;
 ///
 /// ```no_run
 /// use tklog::sync::Logger;
-/// use tklog::tklog::{LEVEL, synclog};
 /// use tklog::Format;
+/// use tklog::LEVEL;
 /// use tklog::MODE;
 ///
 /// let mut log = Logger::new();
@@ -166,6 +169,7 @@ impl Logger {
 }
 
 pub struct Log;
+
 impl Log {
     pub fn new() -> Self {
         Log {}
@@ -232,6 +236,46 @@ impl Log {
         }
         self
     }
+
+    fn is_file_line(&self) -> bool {
+        unsafe {
+            return synclog.is_file_line();
+        }
+    }
+
+    pub fn uselog(&self) -> &Self {
+        let _ = log::set_logger(&TKLOG2SYNCLOG);
+        unsafe {
+            log::set_max_level(tk2l(synclog.get_level()));
+        }
+        self
+    }
+}
+
+impl log::Log for Log {
+    fn enabled(&self, metadata: &log::Metadata) -> bool {
+        unsafe { l2tk(metadata.level()) >= synclog.get_level() }
+    }
+    fn log(&self, record: &log::Record) {
+        if self.enabled(record.metadata()) {
+            let level = l2tk(record.level());
+            let args = record.args();
+            let mut file = "";
+            let mut line: u32 = 0;
+            if self.is_file_line() {
+                line = record.line().unwrap_or(0);
+                file = record.file().unwrap_or("");
+            }
+            unsafe {
+                if synclog.mode == PRINTMODE::DELAY {
+                    synclog.log(synclog.fmt(level, file, line, arguments_to_string(args)));
+                } else {
+                    synclog.safeprint(synclog.fmt(level, file, line, arguments_to_string(args)).as_str());
+                }
+            }
+        }
+    }
+    fn flush(&self) {}
 }
 
 #[macro_export]
@@ -248,7 +292,7 @@ macro_rules! log {
 macro_rules! trace {
     () => {};
     ($($arg:expr),*) => {
-        $crate::log_common!($crate::tklog::LEVEL::Trace, $($arg),*);
+        $crate::log_common!($crate::LEVEL::Trace, $($arg),*);
     };
 }
 
@@ -256,7 +300,7 @@ macro_rules! trace {
 macro_rules! debug {
     () => {};
     ($($arg:expr),*) => {
-        $crate::log_common!($crate::tklog::LEVEL::Debug, $($arg),*);
+        $crate::log_common!($crate::LEVEL::Debug, $($arg),*);
     };
 }
 
@@ -264,7 +308,7 @@ macro_rules! debug {
 macro_rules! info {
     () => {};
     ($($arg:expr),*) => {
-        $crate::log_common!($crate::tklog::LEVEL::Info, $($arg),*);
+        $crate::log_common!($crate::LEVEL::Info, $($arg),*);
     };
 }
 
@@ -272,7 +316,7 @@ macro_rules! info {
 macro_rules! warn {
     () => {};
     ($($arg:expr),*) => {
-        $crate::log_common!($crate::tklog::LEVEL::Warn, $($arg),*);
+        $crate::log_common!($crate::LEVEL::Warn, $($arg),*);
     };
 }
 
@@ -280,7 +324,7 @@ macro_rules! warn {
 macro_rules! error {
     () => {};
     ($($arg:expr),*) => {
-        $crate::log_common!($crate::tklog::LEVEL::Error, $($arg),*);
+        $crate::log_common!($crate::LEVEL::Error, $($arg),*);
     };
 }
 
@@ -288,7 +332,7 @@ macro_rules! error {
 macro_rules! fatal {
     () => {};
     ($($arg:expr),*) => {
-        $crate::log_common!($crate::tklog::LEVEL::Fatal, $($arg),*);
+        $crate::log_common!($crate::LEVEL::Fatal, $($arg),*);
     };
 }
 
@@ -305,7 +349,7 @@ macro_rules! log_common {
                     line = line!();
                 }
                 let msg: String = formatted_args.join(",");
-                if  $crate::tklog::synclog.mode==$crate::tklog::PRINTMODE::DELAY {
+                if  $crate::tklog::synclog.mode==$crate::PRINTMODE::DELAY {
                     $crate::tklog::synclog.log($crate::tklog::synclog.fmt($level, file, line, msg));
                 }else {
                     $crate::tklog::synclog.safeprint($crate::tklog::synclog.fmt($level, file, line, msg).as_str());
