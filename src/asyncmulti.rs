@@ -19,7 +19,7 @@
 #[macro_export]
 macro_rules! async_traces {
     ($logger:expr, $($arg:expr),+) => {
-        $crate::async_logs_common!($logger, $crate::tklog::LEVEL::Trace, $($arg),*);
+        $crate::async_logs_common!($logger, $crate::LEVEL::Trace, $($arg),*);
     };
     () => {};
 }
@@ -28,7 +28,7 @@ macro_rules! async_traces {
 #[macro_export]
 macro_rules! async_debugs {
     ($logger:expr, $($arg:expr),+) => {
-        $crate::async_logs_common!($logger, $crate::tklog::LEVEL::Debug, $($arg),*);
+        $crate::async_logs_common!($logger, $crate::LEVEL::Debug, $($arg),*);
     };
     () => {};
 }
@@ -37,7 +37,7 @@ macro_rules! async_debugs {
 #[macro_export]
 macro_rules! async_infos {
     ($logger:expr, $($arg:expr),+) => {
-        $crate::async_logs_common!($logger, $crate::tklog::LEVEL::Info, $($arg),*);
+        $crate::async_logs_common!($logger, $crate::LEVEL::Info, $($arg),*);
     };
     () => {};
 }
@@ -46,7 +46,7 @@ macro_rules! async_infos {
 #[macro_export]
 macro_rules! async_warns {
     ($logger:expr, $($arg:expr),+) => {
-        $crate::async_logs_common!($logger, $crate::tklog::LEVEL::Warn, $($arg),*);
+        $crate::async_logs_common!($logger, $crate::LEVEL::Warn, $($arg),*);
     };
     () => {};
 }
@@ -55,7 +55,7 @@ macro_rules! async_warns {
 #[macro_export]
 macro_rules! async_errors {
     ($logger:expr, $($arg:expr),+) => {
-        $crate::async_logs_common!($logger, $crate::tklog::LEVEL::Error, $($arg),*);
+        $crate::async_logs_common!($logger, $crate::LEVEL::Error, $($arg),*);
     };
     () => {};
 }
@@ -64,7 +64,7 @@ macro_rules! async_errors {
 #[macro_export]
 macro_rules! async_fatals {
     ($logger:expr, $($arg:expr),+) => {
-        $crate::async_logs_common!($logger, $crate::tklog::LEVEL::Fatal, $($arg),*);
+        $crate::async_logs_common!($logger, $crate::LEVEL::Fatal, $($arg),*);
     };
     () => {};
 }
