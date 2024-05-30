@@ -293,7 +293,63 @@ async_errors>>>>,EEEEEEEEEEE,1,2,3 | 2024-05-26 20:10:24 testasynclog.rs 48[ERRO
 async_fatals>>>>,FFFFFFFFFFFF,1,2,3 | 2024-05-26 20:10:24 testasynclog.rs 49[FATAL]
 ```
 
-### 基准压力测试
+------------
+
+### 支持官方日志库标准API
+
+1.  tklog实现了官方Log接口，支持官方标准化日志API的调用
+2.  实现了官方log库API的异步场景调用。
+
+##### 启用官方log库API的方法： 
+
+###### tklog通过调用  `uselog() ` 函数 来启用官方log的API支持
+
+
+###### 使用示例
+
+```rust
+use std::{thread, time::Duration};
+use tklog::{Format, LEVEL, LOG};
+fn test_synclog() {
+    //初始化
+    LOG.set_console(true)
+        .set_level(LEVEL::Debug)
+        .set_cutmode_by_size("logsize.log", 10000, 10, true)
+        .uselog();  //启用官方log库
+	
+	log::trace!("trace>>>>{}{}{}{}{}", "aaaa", 1, 2, 3, 4);
+	log::debug!("debug>>>>{}{}",1,2);
+    log::info!("info log");
+    log::warn!("warn log");
+    log::error!("error log");
+	thread::sleep(Duration::from_secs(1))
+}
+```
+
+
+####  异步场景中启用 log库API
+
+```rust
+use std::{thread, time::Duration};
+use tklog::{Format, LEVEL, ASYNC_LOG};
+async fn test_synclog() {
+    //初始化
+    ASYNC_LOG.set_console(false)
+        .set_cutmode_by_size("asynclogsize.log", 10000, 10, true).await
+        .uselog(); //启用官方log库
+	
+    log::trace!("trace async log>>>>{}{}{}{}{}", "aaaaaaaaa", 1, 2, 3, 4);
+    log::debug!("debug async log>>>>{}{}",1,2);
+	log::info!("info async log");
+    log::warn!("warn async log");
+    log::error!("error async log");
+    tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+}
+```
+
+------------
+
+### tklog 基准压力测试
 
 ```text
 test_debug              time:   [3.3747 µs 3.4599 µs 3.5367 µs]
