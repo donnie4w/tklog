@@ -19,8 +19,8 @@ use tokio::task;
 
 use crate::asyncfile::FileHandler;
 use crate::handle::{FileSizeMode, FileTimeMode, Handle, Handler};
-use crate::tklog::{asynclog, LEVEL, PRINTMODE};
-use crate::MODE;
+use crate::tklog::asynclog;
+use crate::{l2tk, tk2l, LEVEL, MODE, PRINTMODE, TKLOG2ASYNC_LOG, arguments_to_string};
 
 /// this is the tklog encapsulated Logger whose File operations
 /// are based on tokio, Therefore, it supports asynchronous scenarios
@@ -31,15 +31,17 @@ use crate::MODE;
 /// Create a async Logger Object  and set the parameters:
 ///
 /// ```no_run
-/// use tklog::tklog::LEVEL;
+/// use tklog::LEVEL;
 /// use tklog::Format;
 /// use tklog::MODE;
-/// 
+///
 /// let mut log = tklog::Async::Logger::new();
+///
+/// let  init =  async ||  {
 /// log.set_console(true)
-///     .set_level(LEVEL::Debug)
-///     .set_cutmode_by_time("tklogs.log", MODE::DAY, 10, true)
-///     .await;
+/// .set_level(LEVEL::Debug)
+/// .set_cutmode_by_time("tklogs.log", MODE::DAY, 10, true).await;
+/// };
 /// ```
 pub struct Logger {
     sender: mpsc::UnboundedSender<String>,
@@ -157,6 +159,7 @@ impl Logger {
 }
 
 pub struct Log;
+
 impl Log {
     pub fn new() -> Self {
         Log {}
@@ -227,7 +230,44 @@ impl Log {
         }
         self
     }
+
+    fn is_file_line(&self) -> bool {
+        unsafe {
+            return asynclog.is_file_line();
+        }
+    }
+
+    pub fn uselog(&self) -> &Self {
+        let _ = log::set_logger(&TKLOG2ASYNC_LOG);
+        unsafe { log::set_max_level(tk2l(asynclog.get_level())); }
+        self
+    }
 }
+
+impl log::Log for Log {
+    fn enabled(&self, metadata: &log::Metadata) -> bool {
+        unsafe { l2tk(metadata.level()) >= asynclog.get_level() }
+    }
+    fn log(&self, record: &log::Record) {
+        if self.enabled(record.metadata()) {
+            let level = l2tk(record.level());
+            let args = record.args();
+            let mut file = "";
+            let mut line: u32 = 0;
+            if self.is_file_line() {
+                line = record.line().unwrap_or(0);
+                file = record.file().unwrap_or("");
+            }
+            unsafe {
+                asynclog.log(asynclog.fmt(level, file, line, arguments_to_string(args)));
+            }
+        }
+    }
+    fn flush(&self) {}
+}
+
+
+
 
 #[macro_export]
 macro_rules! async_log {
@@ -243,7 +283,7 @@ macro_rules! async_log {
 macro_rules! async_trace {
     () => {};
     ($($arg:expr),*) => {
-        $crate::async_log_common!($crate::tklog::LEVEL::Trace, $($arg),*);
+        $crate::async_log_common!($crate::LEVEL::Trace, $($arg),*);
     };
 }
 
@@ -251,7 +291,7 @@ macro_rules! async_trace {
 macro_rules! async_debug {
     () => {};
     ($($arg:expr),*) => {
-        $crate::async_log_common!($crate::tklog::LEVEL::Debug, $($arg),*);
+        $crate::async_log_common!($crate::LEVEL::Debug, $($arg),*);
     };
 }
 
@@ -259,7 +299,7 @@ macro_rules! async_debug {
 macro_rules! async_info {
     () => {};
     ($($arg:expr),*) => {
-        $crate::async_log_common!($crate::tklog::LEVEL::Info, $($arg),*);
+        $crate::async_log_common!($crate::LEVEL::Info, $($arg),*);
     };
 }
 
@@ -267,7 +307,7 @@ macro_rules! async_info {
 macro_rules! async_warn {
     () => {};
     ($($arg:expr),*) => {
-        $crate::async_log_common!($crate::tklog::LEVEL::Warn, $($arg),*);
+        $crate::async_log_common!($crate::LEVEL::Warn, $($arg),*);
     };
 }
 
@@ -275,7 +315,7 @@ macro_rules! async_warn {
 macro_rules! async_error {
     () => {};
     ($($arg:expr),*) => {
-        $crate::async_log_common!($crate::tklog::LEVEL::Error, $($arg),*);
+        $crate::async_log_common!($crate::LEVEL::Error, $($arg),*);
     };
 }
 
@@ -283,7 +323,7 @@ macro_rules! async_error {
 macro_rules! async_fatal {
     () => {};
     ($($arg:expr),*) => {
-        $crate::async_log_common!($crate::tklog::LEVEL::Fatal, $($arg),*);
+        $crate::async_log_common!($crate::LEVEL::Fatal, $($arg),*);
     };
 }
 
@@ -300,7 +340,7 @@ macro_rules! async_log_common {
                     line = line!();
                 }
                 let msg: String = formatted_args.join(",");
-                if  $crate::tklog::asynclog.mode==$crate::tklog::PRINTMODE::DELAY {
+                if  $crate::tklog::asynclog.mode==$crate::PRINTMODE::DELAY {
                     $crate::tklog::asynclog.log($crate::tklog::asynclog.fmt($level, file, line, msg));
                 }else {
                     $crate::tklog::asynclog.safeprint($crate::tklog::asynclog.fmt($level, file, line, msg).as_str()).await;
