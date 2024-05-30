@@ -15,6 +15,7 @@
 // limitations under the License.
 
 use std::{
+    fmt,
     fmt::Debug,
     fs::{self, File},
     io::{self, BufReader, BufWriter, Read, Write},
@@ -26,7 +27,7 @@ use flate2::{
     Compression,
 };
 use once_cell::sync::Lazy;
-use tklog::LEVEL;
+
 use tokio::io::AsyncReadExt;
 
 #[allow(non_snake_case)]
@@ -69,7 +70,12 @@ impl ErrCode {
 }
 
 pub const LOG: Lazy<sync::Log> = Lazy::new(|| sync::Log::new());
+
+static TKLOG2SYNCLOG: sync::Log = sync::Log;
+
 pub const ASYNC_LOG: Lazy<Async::Log> = Lazy::new(|| Async::Log::new());
+
+static TKLOG2ASYNC_LOG: Async::Log = Async::Log;
 
 #[allow(non_upper_case_globals)]
 pub mod tklog {
@@ -78,32 +84,32 @@ pub mod tklog {
 
     pub static mut synclog: Lazy<sync::Logger> = Lazy::new(|| sync::Logger::new());
     pub static mut asynclog: Lazy<Async::Logger> = Lazy::new(|| Async::Logger::new());
+}
 
-    #[derive(PartialEq, PartialOrd)]
-    pub enum PRINTMODE {
-        DELAY,
-        PUNCTUAL,
-    }
+#[derive(PartialEq, PartialOrd)]
+pub enum PRINTMODE {
+    DELAY,
+    PUNCTUAL,
+}
 
-    #[derive(PartialEq, PartialOrd, Clone, Copy)]
-    #[repr(u8)]
-    pub enum LEVEL {
-        Trace = 1,
-        Debug = 2,
-        Info = 3,
-        Warn = 4,
-        Error = 5,
-        Fatal = 6,
-        Off = 7,
-    }
+#[derive(PartialEq, PartialOrd, Clone, Copy)]
+#[repr(u8)]
+pub enum LEVEL {
+    Trace = 1,
+    Debug = 2,
+    Info = 3,
+    Warn = 4,
+    Error = 5,
+    Fatal = 6,
+    Off = 7,
+}
 
-    pub enum COLUMN {
-        LOGFLAG,
-        TIME,
-        FILEFLAG,
-        COLON,
-        MESSAGE,
-    }
+pub enum COLUMN {
+    LOGFLAG,
+    TIME,
+    FILEFLAG,
+    COLON,
+    MESSAGE,
 }
 
 #[derive(Copy, Clone)]
@@ -254,4 +260,30 @@ fn passtimemode(startsec: u64, timemode: MODE) -> bool {
         }
         MODE::MONTH => return now.month() > start_time.month(),
     }
+}
+
+fn l2tk(level: log::Level) -> LEVEL {
+    match level {
+        log::Level::Error => LEVEL::Error,
+        log::Level::Warn => LEVEL::Warn,
+        log::Level::Info => LEVEL::Info,
+        log::Level::Debug => LEVEL::Debug,
+        log::Level::Trace => LEVEL::Trace,
+    }
+}
+
+fn tk2l(level: LEVEL) -> log::LevelFilter {
+    match level {
+        LEVEL::Trace => log::LevelFilter::Trace,
+        LEVEL::Debug => log::LevelFilter::Debug,
+        LEVEL::Info => log::LevelFilter::Info,
+        LEVEL::Warn => log::LevelFilter::Warn,
+        LEVEL::Error => log::LevelFilter::Error,
+        LEVEL::Fatal => log::LevelFilter::Off,
+        LEVEL::Off => log::LevelFilter::Off,
+    }
+}
+
+fn arguments_to_string(args: &std::fmt::Arguments) -> String {
+    fmt::format(*args)
 }
