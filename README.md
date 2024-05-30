@@ -11,6 +11,7 @@
 - Log file slicing by specified file size.
 - File rolling mechanism that automatically deletes older log files once a maximum backup count is reached to prevent excess logs from accumulating.
 - Compression of archived backup log files.
+- Supports the official log library standard API
 
 ### [official website](https://tlnet.top/tklogen "official website")
 
