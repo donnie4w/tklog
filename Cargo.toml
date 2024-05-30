@@ -1,13 +1,13 @@
 [package]
 name = "tklog"
-version = "0.0.1"
+version = "0.0.3"
 edition = "2021"
 authors = ["donnie4w <donnie4w@gmail.com>"]
 description = "Lightweight and efficient rust structured log library with support for log level, file shred, compressed archive"
 homepage = "https://github.com/donnie4w/tklog"
 documentation = "https://docs.rs/tklog" 
 readme = "README.md"
-keywords = ["log",  "logger","tracing ","logging"]
+keywords = ["log",  "logger","logging"]
 categories = ["logging"] 
 license = "Apache-2.0"
 repository = "https://github.com/donnie4w/tklog"
@@ -27,3 +27,4 @@ once_cell = "1.19.0"
 flate2 = "1.0"
 crossbeam-channel = "0.5.13"
 regex = "1.10.4"
+log = "0.4.21"
