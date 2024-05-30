@@ -20,8 +20,7 @@ use std::{cell::RefCell, io, sync::Arc};
 use tokio::io::AsyncWriteExt;
 
 use crate::{
-    asyncfile, get_short_file_path, parse_and_format_log, syncfile, timenow, tklog::LEVEL, Format,
-    CUTMODE, MODE,
+    asyncfile, get_short_file_path, parse_and_format_log, syncfile, timenow, Format, CUTMODE, LEVEL, MODE
 };
 
 pub trait FileOption: Send + Sync + 'static {
