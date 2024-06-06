@@ -91,7 +91,7 @@ fn testmutlilog() {
 }
 ```
 
-**Execution Result:**
+###### Execution Result
 
 ```
 debugs>>>>,BBBBBBBBB,1,2,3,5 | 2024-05-26 14:13:25 testlog.rs 70[DEBUG]
@@ -262,7 +262,7 @@ async fn testlog() {
 }
 ```
 
-**Execution Result:**
+###### Execution Result:
 
 ```text
 [TRACE] 20:03:32 testasynclog.rs 20:trace>>>>,aaaaaaa,1,2,3
@@ -273,7 +273,7 @@ async fn testlog() {
 [FATAL] 20:03:32 testasynclog.rs 25:fatal>>>>,eeeeeeeeeeeeee,1,2,3
 ```
 
-**Multiple Instance Asynchronous**
+###### Multiple Instance Asynchronous
 
 ```rust
 use std::sync::Arc;
@@ -303,7 +303,7 @@ async fn testmultilogs() {
 }
 ```
 
-**Execution Result:**
+###### Execution Result:
 
 ```text
 async_debugs>>>>,BBBBBBBBBB,1,2,3 | 2024-05-26 20:10:24 testasynclog.rs 45[DEBUG]
@@ -370,6 +370,73 @@ async fn test_synclog() {
 
 ------------
 
+### tklog supports  multi-instance formatting format! And asynchronous format!
+
+###### Example：
+
+	#[test]
+	fn testformats() {
+		let mut log = Logger::new();
+		log.set_console(true)
+			.set_level(LEVEL::Debug)
+			.set_cutmode_by_time("tklogs.log", MODE::DAY, 10, true);
+		let mut logger = Arc::clone(&Arc::new(Mutex::new(log)));
+		let log = logger.borrow_mut();
+
+		let v = vec![1, 2, 3];
+		tklog::formats!(log, LEVEL::Debug, "Debug>>>{},{}>>>{:?}", 1, 2, v);
+
+		let v2 = vec!['a', 'b'];
+		tklog::formats!(log, LEVEL::Info, "Info>>>{},{}>>{:?}", 1, 2, v2);
+		tklog::formats!(log, LEVEL::Warn, "Warn>>>{},{}", 1, 2);
+		tklog::formats!(log, LEVEL::Error, "Error>>>{},{}", 1, 2);
+		tklog::formats!(log, LEVEL::Fatal, "Fatal>>>{},{}", 1, 2);
+
+		thread::sleep(Duration::from_secs(1))
+	}
+
+###### Execution Result:
+
+	[DEBUG] 2024-06-06 15:54:07 testsynclog.rs 80:Debug>>>1,2>>>[1, 2, 3]
+	[INFO] 2024-06-06 15:54:07 testsynclog.rs 83:Info>>>1,2>>['a', 'b']
+	[WARN] 2024-06-06 15:54:07 testsynclog.rs 84:Warn>>>1,2
+	[ERROR] 2024-06-06 15:54:07 testsynclog.rs 85:Error>>>1,2
+	[FATAL] 2024-06-06 15:54:07 testsynclog.rs 86:Fatal>>>1,2
+
+
+###### asynchronous Example
+
+	#[tokio::test]
+	async fn testformats() {
+		let mut log = tklog::Async::Logger::new();
+		log.set_console(true)
+			.set_level(LEVEL::Debug)
+			.set_cutmode_by_time("tklogasyncs.log", MODE::DAY, 10, true)
+			.await;
+		let mut logger = Arc::clone(&Arc::new(Mutex::new(log)));
+		let log = logger.borrow_mut();
+
+		let v = vec![1, 2, 3];
+		tklog::async_formats!(log, LEVEL::Debug, "Debug>>>{},{}>>>{:?}", 1, 2, v);
+
+		let v2 = vec!['a', 'b'];
+		tklog::async_formats!(log, LEVEL::Info, "Info>>>{},{}>>{:?}", 1, 2, v2);
+		tklog::async_formats!(log, LEVEL::Warn, "Warn>>>{},{}", 1, 2);
+		tklog::async_formats!(log, LEVEL::Error, "Error>>>{},{}", 1, 2);
+		tklog::async_formats!(log, LEVEL::Fatal, "Fatal>>>{},{}", 1, 2);
+
+		tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+	}
+
+###### Execution Result:
+
+	[DEBUG] 2024-06-06 16:09:26 testasynclog.rs 61:Debug>>>1,2>>>[1, 2, 3]
+	[INFO] 2024-06-06 16:09:26 testasynclog.rs 64:Info>>>1,2>>['a', 'b']
+	[WARN] 2024-06-06 16:09:26 testasynclog.rs 65:Warn>>>1,2
+	[ERROR] 2024-06-06 16:09:26 testasynclog.rs 66:Error>>>1,2
+	[FATAL] 2024-06-06 16:09:26 testasynclog.rs 67:Fatal>>>1,2
+
+------------
 
 ### Benchmark Test
 
