@@ -15,6 +15,7 @@
 // limitations under the License.
 
 // Trace log macros, call secondary macro processing logic
+
 #[macro_export]
 macro_rules! traces {
     ($logger:expr, $($arg:expr),+) => {
@@ -64,6 +65,28 @@ macro_rules! errors {
 macro_rules! fatals {
     ($logger:expr, $($arg:expr),+) => {
         $crate::logs_common!($logger, $crate::LEVEL::Fatal, $($arg),*);
+    };
+    () => {};
+}
+
+#[macro_export]
+macro_rules! formats {
+    ($logger:expr, $level:expr, $($arg:expr),*) => {
+        unsafe {
+            let log:&mut Arc<Mutex<tklog::sync::Logger>> = $logger;
+            let mut logger  = log.lock().unwrap();
+            if logger.get_level() <= $level {
+
+                let mut file = "";
+                let mut line = 0;
+                if logger.is_file_line() {
+                    file = file!();
+                    line = line!();
+                }
+                let ss = logger.fmt($level, file, line, format!($($arg),*));
+                logger.print(ss.as_str());
+            }
+        }
     };
     () => {};
 }
