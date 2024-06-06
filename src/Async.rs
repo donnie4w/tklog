@@ -20,7 +20,7 @@ use tokio::task;
 use crate::asyncfile::FileHandler;
 use crate::handle::{FileSizeMode, FileTimeMode, Handle, Handler};
 use crate::tklog::asynclog;
-use crate::{l2tk, tk2l, LEVEL, MODE, PRINTMODE, TKLOG2ASYNC_LOG, arguments_to_string};
+use crate::{arguments_to_string, l2tk, tk2l, LEVEL, MODE, PRINTMODE, TKLOG2ASYNC_LOG};
 
 /// this is the tklog encapsulated Logger whose File operations
 /// are based on tokio, Therefore, it supports asynchronous scenarios
@@ -239,7 +239,9 @@ impl Log {
 
     pub fn uselog(&self) -> &Self {
         let _ = log::set_logger(&TKLOG2ASYNC_LOG);
-        unsafe { log::set_max_level(tk2l(asynclog.get_level())); }
+        unsafe {
+            log::set_max_level(tk2l(asynclog.get_level()));
+        }
         self
     }
 }
@@ -265,9 +267,6 @@ impl log::Log for Log {
     }
     fn flush(&self) {}
 }
-
-
-
 
 #[macro_export]
 macro_rules! async_log {
