@@ -270,7 +270,11 @@ impl log::Log for Log {
                 if synclog.mode == PRINTMODE::DELAY {
                     synclog.log(synclog.fmt(level, file, line, arguments_to_string(args)));
                 } else {
-                    synclog.safeprint(synclog.fmt(level, file, line, arguments_to_string(args)).as_str());
+                    synclog.safeprint(
+                        synclog
+                            .fmt(level, file, line, arguments_to_string(args))
+                            .as_str(),
+                    );
                 }
             }
         }
