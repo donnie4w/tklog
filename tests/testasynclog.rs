@@ -2,8 +2,8 @@ use std::{borrow::BorrowMut, sync::Arc};
 
 use tklog::{
     async_debug, async_debugs, async_error, async_errors, async_fatal, async_fatals, async_info,
-    async_infos, async_trace, async_traces, async_warn, async_warns, LEVEL, Format,
-    ASYNC_LOG, MODE,
+    async_infos, async_trace, async_traces, async_warn, async_warns, Format, ASYNC_LOG, LEVEL,
+    MODE,
 };
 use tokio::{sync::Mutex, time::Instant};
 
@@ -19,10 +19,10 @@ async fn async_log_init() {
 #[tokio::test]
 async fn testlog() {
     async_log_init().await;
-    async_trace!("trace>>>>", "aaaaaaa", 1, 2, 3);
-    async_debug!("debug>>>>", "aaaaaaa", 1, 2, 3);
-    async_info!("info>>>>", "bbbbbbbbb", 1, 2, 3);
-    async_warn!("warn>>>>", "cccccccccc", 1, 2, 3);
+    async_trace!("trace>>>>", "aaaaaaaaaaaa", 1, 2, 3);
+    async_debug!("debug>>>>", "aaaaaaaaaaaa", 1, 2, 3);
+    async_info!("info>>>>", "bbbbbbbbbbbb", 1, 2, 3);
+    async_warn!("warn>>>>", "ccccccccccccc", 1, 2, 3);
     async_error!("error>>>>", "ddddddddddddd", 1, 2, 3);
     async_fatal!("fatal>>>>", "eeeeeeeeeeeeee", 1, 2, 3);
     tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
@@ -45,6 +45,28 @@ async fn testmultilogs() {
     async_errors!(log, "async_errors>>>>", "EEEEEEEEEEE", 1, 2, 3);
     async_fatals!(log, "async_fatals>>>>", "FFFFFFFFFFFF", 1, 2, 3);
     tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+}
+
+#[tokio::test]
+async fn testformats() {
+    let mut log = tklog::Async::Logger::new();
+    log.set_console(true)
+        .set_level(LEVEL::Debug)
+        .set_cutmode_by_time("tklogasyncs.log", MODE::DAY, 10, true)
+        .await;
+    let mut logger = Arc::clone(&Arc::new(Mutex::new(log)));
+    let log = logger.borrow_mut();
+
+    let v = vec![1, 2, 3];
+    tklog::async_formats!(log, LEVEL::Debug, "Debug>>>{},{}>>>{:?}", 1, 2, v);
+
+    let v2 = vec!['a', 'b'];
+    tklog::async_formats!(log, LEVEL::Info, "Info>>>{},{}>>{:?}", 1, 2, v2);
+    tklog::async_formats!(log, LEVEL::Warn, "Warn>>>{},{}", 1, 2);
+    tklog::async_formats!(log, LEVEL::Error, "Error>>>{},{}", 1, 2);
+    tklog::async_formats!(log, LEVEL::Fatal, "Fatal>>>{},{}", 1, 2);
+
+    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
 }
 
 #[tokio::test]
