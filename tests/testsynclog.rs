@@ -6,7 +6,8 @@ use std::{
 };
 
 use tklog::{
-    debug, debugs, error, errors, fatal, fatals, info, infos, sync::Logger, trace, traces, warn, warns, Format, LEVEL, LOG, MODE
+    debug, debugs, error, errors, fatal, fatals, info, infos, sync::Logger, trace, traces, warn,
+    warns, Format, LEVEL, LOG, MODE,
 };
 
 fn log_init() {
@@ -55,11 +56,34 @@ fn testmultilog() {
     let mut logger = Arc::clone(&Arc::new(Mutex::new(log)));
     let log = logger.borrow_mut();
     traces!(log, "traces>>>>", "AAAAAAAAA", 1, 2, 3, 4);
+
     debugs!(log, "debugs>>>>", "BBBBBBBBB", 1, 2, 3, 5);
     infos!(log, "infos>>>>", "CCCCCCCCC", 1, 2, 3, 5);
     warns!(log, "warns>>>>", "DDDDDDDDDD", 1, 2, 3, 6);
     errors!(log, "errors>>>>", "EEEEEEEE", 1, 2, 3, 7);
     fatals!(log, "fatals>>>>", "FFFFFFFF", 1, 2, 3, 8);
+
+    thread::sleep(Duration::from_secs(1))
+}
+
+#[test]
+fn testformats() {
+    let mut log = Logger::new();
+    log.set_console(true)
+        .set_level(LEVEL::Debug)
+        .set_cutmode_by_time("tklogs.log", MODE::DAY, 10, true);
+    let mut logger = Arc::clone(&Arc::new(Mutex::new(log)));
+    let log = logger.borrow_mut();
+
+    let v = vec![1, 2, 3];
+    tklog::formats!(log, LEVEL::Debug, "Debug>>>{},{}>>>{:?}", 1, 2, v);
+
+    let v2 = vec!['a', 'b'];
+    tklog::formats!(log, LEVEL::Info, "Info>>>{},{}>>{:?}", 1, 2, v2);
+    tklog::formats!(log, LEVEL::Warn, "Warn>>>{},{}", 1, 2);
+    tklog::formats!(log, LEVEL::Error, "Error>>>{},{}", 1, 2);
+    tklog::formats!(log, LEVEL::Fatal, "Fatal>>>{},{}", 1, 2);
+
     thread::sleep(Duration::from_secs(1))
 }
 
