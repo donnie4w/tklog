@@ -15,7 +15,6 @@
 // limitations under the License.
 
 use std::{
-    borrow::BorrowMut,
     env,
     ffi::OsStr,
     fs::{self, File, OpenOptions},
@@ -102,8 +101,7 @@ impl FileHandler {
         match self.cutmode {
             CUTMODE::TIME => {
                 if passtimemode(self.startsec, self.timemode) {
-                    let ack = self.rename();
-                    if ack.is_ok() {
+                    if let Ok(_) = self.rename() {
                         let _ = self.new_from_clone();
                         self.startsec = timesec();
                     }
@@ -111,15 +109,13 @@ impl FileHandler {
             }
             CUTMODE::SIZE => {
                 if self.max_size > 0 && self.filesize + data.len() as u64 > self.max_size {
-                    let ack = self.rename();
-                    if ack.is_ok() {
+                    if let Ok(_) = self.rename() {
                         let _ = self.new_from_clone();
                     }
                 }
             }
         }
-        let fh = self.filehandle.borrow_mut();
-        fh.write_all(data)?;
+        self.filehandle.write(data)?;
         self.filesize += data.len() as u64;
         Ok(())
     }
