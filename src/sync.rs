@@ -23,8 +23,10 @@ use crate::{
     tklog::synclog,
     LEVEL, MODE, PRINTMODE, TKLOG2SYNCLOG,
 };
-use crossbeam_channel::{unbounded, Sender};
-use std::sync::Mutex;
+use std::sync::{
+    mpsc::{channel, Sender},
+    Mutex,
+};
 use std::thread;
 
 /// this is the tklog encapsulated Logger whose File operations
@@ -51,8 +53,6 @@ use std::thread;
 /// ```
 pub struct Logger {
     sender: Sender<String>,
-    #[allow(unused)]
-    worker_thread: thread::JoinHandle<()>,
     loghandle: Handle,
     mutex: Mutex<u32>,
     pub mode: PRINTMODE,
@@ -64,21 +64,15 @@ impl Logger {
     }
 
     pub fn new_with_handle(handle: Handle) -> Self {
-        let (sender, receiver) = unbounded();
-        let worker_thread = thread::spawn(move || loop {
-            match receiver.recv() {
-                Ok(task) => {
-                    let msg: String = task;
-                    crate::log!(msg.as_str());
-                }
-                Err(_) => {
-                    break;
-                }
+        let (sender, receiver) = channel();
+        thread::spawn(move || {
+            while let Ok(s) = receiver.recv() {
+                let msg: String = s;
+                crate::log!(msg.as_str());
             }
         });
         Logger {
-            sender: sender,
-            worker_thread,
+            sender,
             loghandle: handle,
             mutex: Mutex::new(0),
             mode: PRINTMODE::DELAY,
