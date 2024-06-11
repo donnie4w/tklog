@@ -72,11 +72,11 @@ macro_rules! fatals {
 #[macro_export]
 macro_rules! formats {
     ($logger:expr, $level:expr, $($arg:expr),*) => {
+        let level:$crate::LEVEL = $level;
         unsafe {
             let log:&mut Arc<Mutex<tklog::sync::Logger>> = $logger;
             let mut logger  = log.lock().unwrap();
-            if logger.get_level() <= $level {
-
+            if logger.get_level() <= level {
                 let mut file = "";
                 let mut line = 0;
                 if logger.is_file_line() {
