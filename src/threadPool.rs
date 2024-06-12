@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crossbeam_channel::{unbounded, Receiver, RecvError, Sender};
+use crossbeam_channel::{unbounded, Receiver, Sender};
 use std::sync::Arc;
 use std::thread;
 
@@ -22,15 +22,16 @@ type Task = Box<dyn FnOnce() + Send + 'static>;
 
 pub struct ThreadPool {
     _workers: Vec<Worker>,
-    sender: Sender<Task>, 
+    sender: Sender<Task>,
 }
 
 impl ThreadPool {
-    pub fn new(size: usize) -> ThreadPool {
-        assert!(size > 0);
+    pub fn new(mut size: usize) -> ThreadPool {
+        if size == 0 {
+            size = 1
+        }
 
         let (sender, receiver) = unbounded();
-
         let receiver = Arc::new(receiver);
         let mut workers = Vec::with_capacity(size);
 
@@ -40,7 +41,7 @@ impl ThreadPool {
 
         ThreadPool {
             _workers: workers,
-            sender: sender,
+            sender,
         }
     }
 
@@ -60,14 +61,9 @@ struct Worker {
 
 impl Worker {
     fn new(id: usize, receiver: Arc<Receiver<Task>>) -> Worker {
-        let thread = thread::spawn(move || loop {
-            match receiver.recv() {
-                Ok(task) => {
-                    task();
-                }
-                Err(RecvError) => {
-                    break;
-                }
+        let thread = thread::spawn(move || {
+            while let Ok(task) = receiver.recv() {
+                task();
             }
         });
         Worker {
