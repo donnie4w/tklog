@@ -14,7 +14,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 // Trace log macros, call secondary macro processing logic
 #[macro_export]
 macro_rules! async_traces {
@@ -69,14 +68,14 @@ macro_rules! async_fatals {
     () => {};
 }
 
-
 #[macro_export]
 macro_rules! async_formats {
     ($logger:expr, $level:expr, $($arg:expr),*) => {
         unsafe {
             let logger_lock:&mut Arc<tokio::sync::Mutex<tklog::Async::Logger>> = $logger;
             let mut logger = logger_lock.as_ref().lock().await;
-            if logger.get_level() <= $level {
+            let level:$crate::LEVEL = $level;
+            if logger.get_level() <= level {
                 let mut file = "";
                 let mut line = 0;
                 if logger.is_file_line() {
