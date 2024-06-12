@@ -45,8 +45,6 @@ use crate::{arguments_to_string, l2tk, tk2l, LEVEL, MODE, PRINTMODE, TKLOG2ASYNC
 /// ```
 pub struct Logger {
     sender: mpsc::UnboundedSender<String>,
-    #[allow(unused)]
-    worker_handle: task::JoinHandle<()>,
     loghandle: Handle,
     mutex: tokio::sync::Mutex<u32>,
     pub mode: PRINTMODE,
@@ -59,7 +57,7 @@ impl Logger {
 
     pub fn new_with_handle(handle: Handle) -> Self {
         let (sender, mut receiver) = mpsc::unbounded_channel();
-        let worker_handle = tokio::spawn(async move {
+        tokio::spawn(async move {
             while let Some(message) = receiver.recv().await {
                 let msg: String = message;
                 crate::async_log!(msg.as_str());
@@ -67,7 +65,6 @@ impl Logger {
         });
         Logger {
             sender,
-            worker_handle,
             loghandle: handle,
             mutex: tokio::sync::Mutex::new(0),
             mode: PRINTMODE::DELAY,
