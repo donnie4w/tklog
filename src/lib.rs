@@ -27,9 +27,7 @@ use flate2::{
     Compression,
 };
 use once_cell::sync::Lazy;
-
 use tokio::io::AsyncReadExt;
-
 #[allow(non_snake_case)]
 pub mod Async;
 pub mod asyncfile;
@@ -40,7 +38,6 @@ pub mod syncfile;
 pub mod syncmulti;
 #[allow(non_snake_case)]
 mod threadPool;
-
 pub enum DateType {
     Date,
     Time,
@@ -68,6 +65,7 @@ impl ErrCode {
         format!("{:?}", self)
     }
 }
+
 
 pub const LOG: Lazy<sync::Log> = Lazy::new(|| sync::Log::new());
 
@@ -255,9 +253,7 @@ fn passtimemode(startsec: u64, timemode: MODE) -> bool {
     let now: NaiveDateTime = Local::now().naive_local();
     match timemode {
         MODE::HOUR => return now.hour() > start_time.hour(),
-        MODE::DAY => {
-            return now.day() > start_time.day();
-        }
+        MODE::DAY => return now.day() > start_time.day(),
         MODE::MONTH => return now.month() > start_time.month(),
     }
 }
