@@ -15,7 +15,7 @@
 // limitations under the License.
 
 
-use std::{cell::RefCell, io, sync::Arc};
+use std::io;
 
 use tokio::io::AsyncWriteExt;
 
@@ -125,9 +125,9 @@ pub struct Handler {
     format: u8,    // log format
     console: bool, //
     formatter: String,
-    file_handler: Option<RefCell<syncfile::FileHandler>>,
-    async_file_handler: Option<Arc<tokio::sync::Mutex<asyncfile::FileHandler>>>,
-    async_console: Option<Arc<tokio::sync::Mutex<Console>>>,
+    file_handler: Option<syncfile::FileHandler>,
+    async_file_handler: Option<asyncfile::FileHandler>,
+    async_console: Option<Console>,
 }
 
 const DEFAULT_FORMATTER: &str = "{level}{time} {file}:{message}\n";
@@ -157,7 +157,7 @@ impl Handler {
             format,
             console,
             formatter: DEFAULT_FORMATTER.to_string(),
-            file_handler: Some(RefCell::new(*fh)),
+            file_handler: Some(*fh),
             async_file_handler: None,
             async_console: None,
         }
@@ -175,8 +175,8 @@ impl Handler {
             console,
             formatter: DEFAULT_FORMATTER.to_string(),
             file_handler: None,
-            async_file_handler: Some(Arc::new(tokio::sync::Mutex::new(*fh))),
-            async_console: Some(Arc::new(tokio::sync::Mutex::new(Console::new()))),
+            async_file_handler: Some(*fh),
+            async_console: Some(Console::new()),
         }
     }
 
@@ -185,22 +185,17 @@ impl Handler {
             print!("{}", s);
         }
         if self.file_handler.is_some() {
-            let mut fh = self.file_handler.as_ref().unwrap().borrow_mut();
-            fh.write(s.as_bytes())?;
+            self.file_handler.as_mut().unwrap().write(s.as_bytes())?;
         }
         Ok(())
     }
 
     pub async fn async_print(&mut self, s: &str) -> io::Result<()> {
         if self.is_console() {
-            let cs = self.async_console.clone().unwrap();
-            let c = cs.lock().await;
-            let _ = c.async_print(s).await;
+            let _ = self.async_console.as_mut().unwrap().async_print(s).await;
         }
         if self.async_file_handler.is_some() {
-            let fh = self.async_file_handler.clone().unwrap();
-            let mut h = fh.lock().await;
-            h.write(s.as_bytes()).await?;
+            self.async_file_handler.as_mut().unwrap().write(s.as_bytes()).await?;
         }
         Ok(())
     }
@@ -213,12 +208,12 @@ impl Handler {
     }
 
     pub fn set_file_handler(&mut self, filehandler: syncfile::FileHandler) {
-        self.file_handler = Some(RefCell::new(filehandler))
+        self.file_handler = Some(filehandler)
     }
 
     pub fn set_async_file_handler(&mut self, filehandler: asyncfile::FileHandler) {
-        self.async_file_handler = Some(Arc::new(tokio::sync::Mutex::new(filehandler)));
-        self.async_console = Some(Arc::new(tokio::sync::Mutex::new(Console::new())));
+        self.async_file_handler = Some(filehandler);
+        self.async_console = Some(Console::new());
     }
 
     fn is_default_formatter(&self) -> bool {
