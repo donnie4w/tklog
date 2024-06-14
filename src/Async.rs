@@ -15,8 +15,6 @@
 // limitations under the License.
 
 use tokio::sync::mpsc;
-use tokio::task;
-
 use crate::asyncfile::FileHandler;
 use crate::handle::{FileSizeMode, FileTimeMode, Handle, Handler};
 use crate::tklog::asynclog;
