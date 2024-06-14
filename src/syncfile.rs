@@ -55,6 +55,10 @@ impl FileHandler {
             return Err(file.err().unwrap());
         }
 
+        let f = file.unwrap();
+        let metadata = f.metadata()?.modified()?;
+        let startsec = metadata.duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
+
         let fh = FileHandler {
             filename: fo.filename(),
             max_size: fo.size(),
@@ -63,10 +67,9 @@ impl FileHandler {
             cutmode: fo.mode(),
             timemode: fo.timemode(),
             filesize: fs::metadata(&log_path)?.len(),
-            filehandle: file.unwrap(),
-            startsec: timesec(),
+            filehandle: f,
+            startsec,
         };
-
         Ok(fh)
     }
 
