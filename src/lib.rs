@@ -66,7 +66,6 @@ impl ErrCode {
     }
 }
 
-
 pub const LOG: Lazy<sync::Log> = Lazy::new(|| sync::Log::new());
 
 static TKLOG2SYNCLOG: sync::Log = sync::Log;
@@ -244,8 +243,8 @@ fn get_short_file_path(filename: &str) -> &str {
 }
 
 fn timesec() -> u64 {
-    let now: NaiveDateTime = Local::now().naive_local();
-    return now.and_utc().timestamp().try_into().unwrap();
+    let now: DateTime<Local> = Local::now();
+    return now.timestamp() as u64;
 }
 
 fn passtimemode(startsec: u64, timemode: MODE) -> bool {
