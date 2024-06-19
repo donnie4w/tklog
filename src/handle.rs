@@ -14,16 +14,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 use std::io;
 
 use tokio::io::AsyncWriteExt;
 
 use crate::{
-    asyncfile, get_short_file_path, parse_and_format_log, syncfile, timenow, Format, CUTMODE, LEVEL, MODE
+    asyncfile, get_short_file_path, parse_and_format_log, syncfile, timenow, Format, LogOption,
+    CUTMODE, LEVEL, MODE,
 };
 
-pub trait FileOption: Send + Sync + 'static {
+pub trait FileOption: Send + Sync {
     fn mode(&self) -> CUTMODE;
     fn timemode(&self) -> MODE;
     fn filename(&self) -> String;
@@ -184,18 +184,20 @@ impl Handler {
         if self.is_console() {
             print!("{}", s);
         }
-        if self.file_handler.is_some() {
-            self.file_handler.as_mut().unwrap().write(s.as_bytes())?;
+        if let Some(f) = self.file_handler.as_mut() {
+            f.write(s.as_bytes())?;
         }
         Ok(())
     }
 
     pub async fn async_print(&mut self, s: &str) -> io::Result<()> {
         if self.is_console() {
-            let _ = self.async_console.as_mut().unwrap().async_print(s).await;
+            if let Some(c) = self.async_console.as_mut() {
+                let _ = c.async_print(s).await;
+            }
         }
-        if self.async_file_handler.is_some() {
-            self.async_file_handler.as_mut().unwrap().write(s.as_bytes()).await?;
+        if let Some(f) = self.async_file_handler.as_mut() {
+            f.write(s.as_bytes()).await?;
         }
         Ok(())
     }
@@ -314,9 +316,11 @@ impl Handle {
             let ts = timenow();
             if fmat & Format::Date != 0 {
                 time.push_str(ts[0].as_str());
-                time.push(' ');
             }
             if fmat & (Format::Time | Format::Microseconds) != 0 {
+                if !time.is_empty() {
+                    time.push(' ');
+                }
                 time.push_str(ts[1].as_str());
                 if fmat & Format::Microseconds != 0 {
                     time.push_str(ts[2].as_str());
@@ -335,14 +339,18 @@ impl Handle {
 
         if self.handler.is_default_formatter() {
             let mut r = String::new();
-            r.push_str(&levelflag);
-            r.push(' ');
+            if !levelflag.is_empty() {
+                r.push_str(&levelflag);
+                r.push(' ');
+            }
             if !time.is_empty() {
                 r.push_str(&time);
                 r.push(' ');
             }
-            r.push_str(&file);
-            r.push(':');
+            if !file.is_empty() {
+                r.push_str(&file);
+                r.push(':');
+            }
             r.push_str(&msg);
             r.push('\n');
             return r;
@@ -393,5 +401,49 @@ impl Handle {
     /** default: "{level}{time} {file}:{message}\n" */
     pub fn set_formatter(&mut self, formatter: String) {
         self.handler.set_formatter(formatter);
+    }
+
+    pub fn set_option(&mut self, option: LogOption) {
+        if option.level.is_some() {
+            self.set_level(option.level.unwrap());
+        }
+        if option.console.is_some() {
+            self.set_console(option.console.unwrap());
+        }
+        if option.format.is_some() {
+            self.set_format(option.format.unwrap());
+        }
+        if option.formatter.is_some() {
+            self.set_formatter(option.formatter.unwrap().to_string());
+        }
+        match option.fileoption {
+            Some(fo) => {
+                let fh = syncfile::FileHandler::new(fo);
+                self.handler.set_file_handler(fh.unwrap());
+            }
+            None => {}
+        }
+    }
+
+    pub async fn async_set_option(&mut self, option: LogOption) {
+        if option.level.is_some() {
+            self.set_level(option.level.unwrap());
+        }
+        if option.console.is_some() {
+            self.set_console(option.console.unwrap());
+        }
+        if option.format.is_some() {
+            self.set_format(option.format.unwrap());
+        }
+        if option.formatter.is_some() {
+            self.set_formatter(option.formatter.unwrap().to_string());
+        }
+        match option.fileoption {
+            Some(fo) => {
+                let fh = asyncfile::FileHandler::new(fo);
+                self.handler.set_async_file_handler(fh.await.unwrap());
+            }
+            None => {}
+        }
     }
 }
