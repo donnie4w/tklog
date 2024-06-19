@@ -22,6 +22,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use chrono::{DateTime, Local};
 use once_cell::sync::Lazy;
 use regex::Regex;
 
@@ -56,8 +57,11 @@ impl FileHandler {
         }
 
         let f = file.unwrap();
-        let metadata = f.metadata()?.modified()?;
-        let startsec = metadata.duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
+        let modified_time = f.metadata()?.modified()?;
+
+        let datetime_utc: DateTime<chrono::Utc> = modified_time.into();
+        let datetime_local = datetime_utc.with_timezone(&Local);
+        let startsec = datetime_local.naive_local().and_utc().timestamp() as u64;
 
         let fh = FileHandler {
             filename: fo.filename(),
