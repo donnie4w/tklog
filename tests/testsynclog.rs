@@ -13,8 +13,9 @@ use tklog::{
 fn log_init() {
     LOG.set_console(true)
         .set_level(LEVEL::Trace)
-        .set_format(Format::LevelFlag | Format::Microseconds | Format::LongFileName)
-        .set_cutmode_by_size("tklogsize.log", 10000, 10, true)
+        .set_format(Format::LevelFlag | Format::Date | Format::Microseconds | Format::LongFileName)
+        // .set_cutmode_by_size("tklogsize.log", 10000, 10, true)
+        .set_cutmode_by_time("tklogtime.log", MODE::DAY, 0, false)
         .set_formatter("{level}{time} {file}:{message}\n");
 }
 
@@ -35,6 +36,7 @@ fn testthreads() {
     log_init();
     let handles: Vec<_> = (0..100)
         .map(|i| {
+            thread::sleep(Duration::from_secs(1));
             thread::spawn(move || {
                 debug!("testthreads", i, format!("{:?}", Instant::now()));
             })
@@ -92,7 +94,7 @@ fn testlogssize() {
     let mut log = Logger::new();
     log.set_console(true)
         .set_level(LEVEL::Debug)
-        .set_cutmode_by_size("tklogsize.log", 10 << 20, 10, false);
+        .set_cutmode_by_size("tklogsize.log", 1 << 10, 10, false);
     let logger = Arc::new(Mutex::new(log));
     let handles: Vec<_> = (0..10)
         .map(|i| {
