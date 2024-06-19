@@ -13,10 +13,11 @@
 - 文件数管理：可设定最大备份文件数，自动删除旧日志，避免过多日志文件累积
 - 文件压缩功能：支持对归档日志文件进行压缩
 - 支持官方日志库标准API
+- 支持按模块设置独立日志参数
 
 ### [官网](https://tlnet.top/tklog "官网")
 
-### 使用方法概述
+## 使用方法简述
 
 最简单常用的方法：**直接调用**
 
@@ -101,7 +102,7 @@ fatals>>>>,FFFFFFFF,1,2,3,8 | 2024-05-26 14:13:25 testlog.rs 74[FATAL]
 
 ------------
 
-### tklog使用详细说明
+## tklog使用详细说明
 
 #### 1. 日志级别 ： Trace < Debug < Info < Warn < Error < Fatal
 
@@ -296,7 +297,7 @@ async_fatals>>>>,FFFFFFFFFFFF,1,2,3 | 2024-05-26 20:10:24 testasynclog.rs 49[FAT
 
 ------------
 
-### 支持官方日志库标准API
+## 支持官方日志库标准API
 
 1.  tklog实现了官方Log接口，支持官方标准化日志API的调用
 2.  实现了官方log库API的异步场景调用。
@@ -350,9 +351,132 @@ async fn test_synclog() {
 
 ------------
 
-### tklog 支持自定义多实例格式化  format!与 异步format!
+## 模块设置独立日志参数
 
-###### 示例：
+1. tklog提供了`set_option`与`set_mod_option` 设置Logger对象的全局日志参数和指定mod的日志参数
+2. 在项目中，可以使用全局LOG对象，同时对多个mod设置独立的日志参数
+3. 不同mod可以设置不同的日志级别，日志格式，日志文件等
+4. 异步全局对象ASYNC_LOG的mod日志参数设置与同步LOG相同
+
+
+#####  `set_option` 示例：
+
+	tklog::LOG.set_option(LogOption{level:Some(LEVEL::Debug),console: Some(false),format:None,formatter:None,fileoption: Some(Box::new(FileTimeMode::new("day.log",tklog::MODE::DAY,0,true)))});
+
+##### LogOption对象说明
+
+-      level      日志级别
+-      format    日志格式
+-      formatter   日志输出自定义格式
+-      console    控制台日志设置
+-      fileoption		文件日志设置
+
+
+#####  `set_mod_option` 示例：
+
+	tklog::LOG.set_mod_option("testlog::module1",LogOption{level:Some(LEVEL::Debug),console: Some(false),format:None,formatter:None,fileoption: Some(Box::new(FileTimeMode::new("day.log", tklog::MODE::DAY, 0,true)))});
+
+
+- `testlog::module1` 为设置的模块名，可以通过rust内置宏  `module_path!()`  打印出当前模块名
+- 当tklog在模块 `testlog::module1` 中使用时，将tklog将使用该LogOption对象
+
+#### 完整的mod示例
+
+```rust
+mod module1 {
+    use std::{thread, time::Duration};
+    use tklog::{handle::FileTimeMode, LogOption, LEVEL};
+    pub fn testmod() {
+        tklog::LOG.set_mod_option("testlog::module1", LogOption { level: Some(LEVEL::Debug), format: None, formatter: None, console: None, fileoption: Some(Box::new(FileTimeMode::new("module1.log", tklog::MODE::DAY, 0, true))) }).uselog();
+        tklog::debug!("module1,tklog api,LOG debug log>>", 123);
+        tklog::info!("module1,tklog api,LOG info log>>", 456);
+        log::debug!("module1,log api,debug log>>{}", 111);
+        log::info!("module1,log api,info log>>{}", 222);
+        thread::sleep(Duration::from_secs(1))
+    }
+}
+
+mod module2 {
+    use std::{thread, time::Duration};
+    use tklog::{handle::FileTimeMode, LogOption, LEVEL};
+    pub fn testmod() {
+        tklog::LOG.set_mod_option("testlog::module2", LogOption { level: Some(LEVEL::Info), format: None, formatter: None, console: None, fileoption: Some(Box::new(FileTimeMode::new("module2.log", tklog::MODE::DAY, 0, true))) }).uselog();
+        tklog::debug!("module2,tklog api,LOG debug log>>", 123);
+        tklog::info!("module2,tklog api,LOG info log>>", 456);
+        log::debug!("module2,log api,debug log>>{}", 111);
+        log::info!("module2,log api,info log>>{}", 222);
+        thread::sleep(Duration::from_secs(1))
+    }
+}
+
+#[test]
+fn testmod2() {
+    module1::testmod();
+    module2::testmod();
+}
+```
+##### 执行结果
+```text
+[DEBUG] 2024-06-19 10:54:07 testlog.rs 54:module1,tklog api,LOG debug log>>,123
+[INFO] 2024-06-19 10:54:07 testlog.rs 55:module1,tklog api,LOG info log>>,456
+[DEBUG] 2024-06-19 10:54:07 testlog.rs 56:module1,log api,debug log>>111
+[INFO] 2024-06-19 10:54:07 testlog.rs 57:module1,log api,info log>>222
+[INFO] 2024-06-19 10:54:08 testlog.rs 68:module2,tklog api,LOG info log>>,456
+[INFO] 2024-06-19 10:54:08 testlog.rs 70:module2,log api,info log>>222
+```
+
+#### 示例2: 异步日志
+
+```rust
+
+mod module3 {
+    use tklog::{handle::FileTimeMode, Format, LogOption, LEVEL};
+    pub async fn testmod() {
+        tklog::ASYNC_LOG.set_mod_option("testlog::module3", LogOption { level: Some(LEVEL::Debug), format: Some(Format::Date), formatter: None, console: None, fileoption: Some(Box::new(FileTimeMode::new("module3.log", tklog::MODE::DAY, 0, true))) }).await.uselog();
+        tklog::async_debug!("async module3,tklog api,LOG debug log>>", 123);
+        tklog::async_info!("async module3,tklog api,LOG info log>>", 456);
+        log::debug!("async module3,log api,debug log>>{}", 333);
+        log::info!("async module3,log api,info log>>{}", 444);
+        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+    }
+}
+
+mod module4 {
+    use tklog::{handle::FileTimeMode, Format, LogOption, LEVEL};
+    pub async fn testmod() {
+        tklog::ASYNC_LOG.set_mod_option("testlog::module4", LogOption { level: Some(LEVEL::Info), format: Some(Format::Date), formatter: None, console: None, fileoption: Some(Box::new(FileTimeMode::new("module4.log", tklog::MODE::DAY, 0, true))) }).await.uselog();
+        tklog::async_debug!("async module4,tklog api,LOG debug log>>", 123);
+        tklog::async_info!("async module4,tklog api,LOG info log>>", 456);
+        log::debug!("async module4,log api,debug log>>{}", 333);
+        log::info!("async module4,log api,info log>>{}", 444);
+        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+    }
+}
+
+#[tokio::test]
+async fn testmod4() {
+    module3::testmod().await;
+    module4::testmod().await;
+}
+```
+
+##### 执行结果：
+
+```text
+[DEBUG] 2024-06-19 10:59:26 testlog.rs 85:async module3,tklog api,LOG debug log>>,123
+[INFO] 2024-06-19 10:59:26 testlog.rs 86:async module3,tklog api,LOG info log>>,456
+[DEBUG] 2024-06-19 10:59:26 testlog.rs 87:async module3,log api,debug log>>333
+[INFO] 2024-06-19 10:59:26 testlog.rs 88:async module3,log api,info log>>444
+[INFO] 2024-06-19 10:59:27 testlog.rs 98:async module4,tklog api,LOG info log>>,456
+[INFO] 2024-06-19 10:59:27 testlog.rs 100:async module4,log api,info log>>444
+
+```
+
+------------
+
+## tklog 支持自定义多实例格式化  format!与 异步format!
+
+##### 示例：
 
 	#[test]
 	fn testformats() {
@@ -375,7 +499,7 @@ async fn test_synclog() {
 		thread::sleep(Duration::from_secs(1))
 	}
 
-###### 执行结果
+##### 执行结果
 
 	[DEBUG] 2024-06-06 15:54:07 testsynclog.rs 80:Debug>>>1,2>>>[1, 2, 3]
 	[INFO] 2024-06-06 15:54:07 testsynclog.rs 83:Info>>>1,2>>['a', 'b']
@@ -384,7 +508,7 @@ async fn test_synclog() {
 	[FATAL] 2024-06-06 15:54:07 testsynclog.rs 86:Fatal>>>1,2
 
 
-###### 异步 formats示例
+##### 异步 formats示例
 
 	#[tokio::test]
 	async fn testformats() {
@@ -421,6 +545,23 @@ async fn test_synclog() {
 ### tklog 基准压力测试
 
 ```text
+log_benchmark           time:   [2.9703 µs 2.9977 µs 3.0256 µs]
+                        			change: [-95.539% -95.413% -95.268%] (p = 0.00 < 0.05)
+                        			Performance has improved.
+Found 9 outliers among 100 measurements (9.00%)
+  4 (4.00%) high mild
+  5 (5.00%) high severe
+```
+```text
+log_benchmark           time:   [2.9685 µs 3.0198 µs 3.0678 µs]
+                        			change: [-3.6839% -1.2170% +1.0120%] (p = 0.34 > 0.05)
+                        			No change in performance detected.
+Found 7 outliers among 100 measurements (7.00%)
+  7 (7.00%) high mild
+```
+
+
+```text
 test_debug              time:   [3.3747 µs 3.4599 µs 3.5367 µs]
                                change: [-69.185% -68.009% -66.664%] (p = 0.00 < 0.05)
                                Performance has improved.
@@ -428,9 +569,6 @@ Found 9 outliers among 100 measurements (9.00%)
   6 (6.00%) high mild
   3 (3.00%) high severe
 ```
-###### 说明：时间范围给出了三个数据点，分别代表了测试执行时间的最小值（3.3747微秒）、平均值附近的值（3.4599微秒）、以及最大值（3.5367微秒）
-
-
 ```rust
 test_debug              time:   [3.8377 µs 3.8881 µs 3.9408 µs]
                                 change: [-66.044% -65.200% -64.363%] (p = 0.00 < 0.05)
@@ -438,6 +576,8 @@ test_debug              time:   [3.8377 µs 3.8881 µs 3.9408 µs]
 Found 2 outliers among 100 measurements (2.00%)
   2 (2.00%) high mild
 ```
-###### 说明：测试运行的时间范围是从3.8377微秒到3.9408微秒，覆盖了一个大概的分布情况，其中3.8881微秒大约是这段时间内的平均或中位数执行时间
 
-###### 结论：日志打印函数性能：3 µs/op — 4 µs/op   （微妙/次）
+##### 说明：时间范围给出了三个数据点，分别代表了测试执行时间的最小值（2.9055微秒）、平均值附近的值（2.9444微秒-3.8881微妙）、以及最大值（3.9408微秒）
+
+
+##### 结论：tklog基准测试结果：2 µs/op — 3.9 µs/op   （微妙/次）
