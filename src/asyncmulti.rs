@@ -75,7 +75,8 @@ macro_rules! async_formats {
             let logger_lock:&mut Arc<tokio::sync::Mutex<tklog::Async::Logger>> = $logger;
             let mut logger = logger_lock.as_ref().lock().await;
             let level:$crate::LEVEL = $level;
-            if logger.get_level() <= level {
+            let module = module_path!();
+            if logger.get_level(module) <= level {
                 let mut file = "";
                 let mut line = 0;
                 if logger.is_file_line() {
@@ -83,7 +84,7 @@ macro_rules! async_formats {
                     line = line!();
                 }
                 let ss = logger.fmt($level, file, line, format!($($arg),*));
-                logger.print(ss.as_str()).await;
+                logger.print(module,ss.as_str()).await;
             }
         }
     };
@@ -96,7 +97,8 @@ macro_rules! async_logs_common {
         unsafe {
             let logger_lock:&mut Arc<tokio::sync::Mutex<tklog::Async::Logger>> = $logger;
             let mut logger = logger_lock.as_ref().lock().await;
-            if logger.get_level() <= $level {
+            let module = module_path!();
+            if logger.get_level(module) <= $level {
                 let formatted_args: Vec<String> = vec![$(format!("{}", $arg)),*];
                 let mut file = "";
                 let mut line = 0;
@@ -106,7 +108,7 @@ macro_rules! async_logs_common {
                 }
                 let msg: String = formatted_args.join(",");
                 let ss = logger.fmt($level, file, line, msg);
-                logger.print(ss.as_str()).await;
+                logger.print(module,ss.as_str()).await;
             }
         }
     };
