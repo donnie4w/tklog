@@ -599,6 +599,6 @@ Found 2 outliers among 100 measurements (2.00%)
   2 (2.00%) high mild
 ```
 
-###### Explanation: The time range gives three data points representing the minimum test execution time (3.3747 microseconds), the value near the average (3.4599 microseconds), and the maximum (3.5367 microseconds).
+###### Explanation: The time range gives three data points representing the minimum test execution time (2.9055 microseconds), the value near the average (2.9444microseconds-3.8881microseconds ), and the maximum (3.9408 microseconds).
 
 **Conclusion: Log printing function performance: 2 µs /op - 3.9 µs /op (microsecond/time)**
