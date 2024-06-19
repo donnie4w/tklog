@@ -44,6 +44,14 @@ pub enum DateType {
     Microseconds,
 }
 
+pub struct LogOption {
+    pub level: Option<LEVEL>,
+    pub format: Option<u8>,
+    pub formatter: Option<String>,
+    pub console: Option<bool>,
+    pub fileoption: Option<Box<dyn handle::FileOption>>,
+}
+
 #[allow(non_upper_case_globals, non_snake_case)]
 pub mod Format {
     pub const Nano: u8 = 0;
@@ -89,7 +97,7 @@ pub enum PRINTMODE {
     PUNCTUAL,
 }
 
-#[derive(PartialEq, PartialOrd, Clone, Copy)]
+#[derive(PartialEq, PartialOrd, Clone, Copy, Debug)]
 #[repr(u8)]
 pub enum LEVEL {
     Trace = 1,
@@ -116,7 +124,7 @@ pub enum MODE {
     MONTH,
 }
 
-#[derive(Copy, Clone)]
+#[derive(PartialEq, PartialOrd, Clone, Copy, Debug)]
 pub enum CUTMODE {
     TIME,
     SIZE,
@@ -243,8 +251,8 @@ fn get_short_file_path(filename: &str) -> &str {
 }
 
 fn timesec() -> u64 {
-    let now: DateTime<Local> = Local::now();
-    return now.timestamp() as u64;
+    let now: NaiveDateTime = Local::now().naive_local();
+    return now.and_utc().timestamp() as u64;
 }
 
 fn passtimemode(startsec: u64, timemode: MODE) -> bool {
@@ -267,17 +275,17 @@ fn l2tk(level: log::Level) -> LEVEL {
     }
 }
 
-fn tk2l(level: LEVEL) -> log::LevelFilter {
-    match level {
-        LEVEL::Trace => log::LevelFilter::Trace,
-        LEVEL::Debug => log::LevelFilter::Debug,
-        LEVEL::Info => log::LevelFilter::Info,
-        LEVEL::Warn => log::LevelFilter::Warn,
-        LEVEL::Error => log::LevelFilter::Error,
-        LEVEL::Fatal => log::LevelFilter::Off,
-        LEVEL::Off => log::LevelFilter::Off,
-    }
-}
+// fn tk2l(level: LEVEL) -> log::LevelFilter {
+//     match level {
+//         LEVEL::Trace => log::LevelFilter::Trace,
+//         LEVEL::Debug => log::LevelFilter::Debug,
+//         LEVEL::Info => log::LevelFilter::Info,
+//         LEVEL::Warn => log::LevelFilter::Warn,
+//         LEVEL::Error => log::LevelFilter::Error,
+//         LEVEL::Fatal => log::LevelFilter::Off,
+//         LEVEL::Off => log::LevelFilter::Off,
+//     }
+// }
 
 fn arguments_to_string(args: &std::fmt::Arguments) -> String {
     fmt::format(*args)
