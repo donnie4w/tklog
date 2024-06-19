@@ -17,7 +17,7 @@
 
 ------------
 
-### Simple Usage Description
+## Simple Usage Description
 
 The simplest way to use tklog involves direct macro calls:
 
@@ -106,7 +106,7 @@ fatals>>>>,FFFFFFFF,1,2,3,8 | 2024-05-26 14:13:25 testlog.rs 74[FATAL]
 ------------
 
 
-### Detailed Usage Guide
+## Detailed Usage Guide
 
 #### 1. Log Levels: Trace < Debug < Info < Warn < Error < Fatal.
 
@@ -316,7 +316,7 @@ async_fatals>>>>,FFFFFFFFFFFF,1,2,3 | 2024-05-26 20:10:24 testasynclog.rs 49[FAT
 ------------
 
 
-### Supports the official log library standard API
+## Supports the official log library standard API
 
 1.  tklog implements the regular use of the official Log interface API
 2.  Implement the official log library API to be used in asynchronous scenarios
@@ -370,7 +370,133 @@ async fn test_synclog() {
 
 ------------
 
-### tklog supports  multi-instance formatting format! And asynchronous format!
+
+## The module sets  log parameters
+
+1. tklog provides `set_option` and `set_mod_option` to set the global log parameters of the Logger object and specify the log parameters of the mod
+2. In the project, you can use the global LOG object to set  log parameters for multiple mod at the same time
+3. Different mod can set different log level, log formats, log file, etc
+4. The log parameter of mod  for ASYNC_LOG is the same as LOG object
+
+
+#####  `set_option` example：
+
+	tklog::LOG.set_option(LogOption{level:Some(LEVEL::Debug),console: Some(false),format:None,formatter:None,fileoption: Some(Box::new(FileTimeMode::new("day.log",tklog::MODE::DAY,0,true)))});
+
+##### LogOption instruction
+
+-      level      level of  log
+-      format    format of log
+-      formatter   user-defined log output format
+-      console    console log setting
+-      fileoption		file log setting
+
+
+#####  `set_mod_option` File log setting：
+
+	tklog::LOG.set_mod_option("testlog::module1",LogOption{level:Some(LEVEL::Debug),console: Some(false),format:None,formatter:None,fileoption: Some(Box::new(FileTimeMode::new("day.log", tklog::MODE::DAY, 0,true)))});
+
+
+- `testlog::module1` is the module name，you can use  `module_path!()`  to print out the current module name
+- When tklog is used in the module `testlog::module1`, tklog will use the LogOption object
+
+#### Complete mod example
+
+```rust
+mod module1 {
+    use std::{thread, time::Duration};
+    use tklog::{handle::FileTimeMode, LogOption, LEVEL};
+    pub fn testmod() {
+        tklog::LOG.set_mod_option("testlog::module1", LogOption { level: Some(LEVEL::Debug), format: None, formatter: None, console: None, fileoption: Some(Box::new(FileTimeMode::new("module1.log", tklog::MODE::DAY, 0, true))) }).uselog();
+        tklog::debug!("module1,tklog api,LOG debug log>>", 123);
+        tklog::info!("module1,tklog api,LOG info log>>", 456);
+        log::debug!("module1,log api,debug log>>{}", 111);
+        log::info!("module1,log api,info log>>{}", 222);
+        thread::sleep(Duration::from_secs(1))
+    }
+}
+
+mod module2 {
+    use std::{thread, time::Duration};
+    use tklog::{handle::FileTimeMode, LogOption, LEVEL};
+    pub fn testmod() {
+        tklog::LOG.set_mod_option("testlog::module2", LogOption { level: Some(LEVEL::Info), format: None, formatter: None, console: None, fileoption: Some(Box::new(FileTimeMode::new("module2.log", tklog::MODE::DAY, 0, true))) }).uselog();
+        tklog::debug!("module2,tklog api,LOG debug log>>", 123);
+        tklog::info!("module2,tklog api,LOG info log>>", 456);
+        log::debug!("module2,log api,debug log>>{}", 111);
+        log::info!("module2,log api,info log>>{}", 222);
+        thread::sleep(Duration::from_secs(1))
+    }
+}
+
+#[test]
+fn testmod2() {
+    module1::testmod();
+    module2::testmod();
+}
+```
+
+##### Execution Result:
+
+```text
+[DEBUG] 2024-06-19 10:54:07 testlog.rs 54:module1,tklog api,LOG debug log>>,123
+[INFO] 2024-06-19 10:54:07 testlog.rs 55:module1,tklog api,LOG info log>>,456
+[DEBUG] 2024-06-19 10:54:07 testlog.rs 56:module1,log api,debug log>>111
+[INFO] 2024-06-19 10:54:07 testlog.rs 57:module1,log api,info log>>222
+[INFO] 2024-06-19 10:54:08 testlog.rs 68:module2,tklog api,LOG info log>>,456
+[INFO] 2024-06-19 10:54:08 testlog.rs 70:module2,log api,info log>>222
+```
+
+#### Example 2: Asynchronous logging
+
+```rust
+
+mod module3 {
+    use tklog::{handle::FileTimeMode, Format, LogOption, LEVEL};
+    pub async fn testmod() {
+        tklog::ASYNC_LOG.set_mod_option("testlog::module3", LogOption { level: Some(LEVEL::Debug), format: Some(Format::Date), formatter: None, console: None, fileoption: Some(Box::new(FileTimeMode::new("module3.log", tklog::MODE::DAY, 0, true))) }).await.uselog();
+        tklog::async_debug!("async module3,tklog api,LOG debug log>>", 123);
+        tklog::async_info!("async module3,tklog api,LOG info log>>", 456);
+        log::debug!("async module3,log api,debug log>>{}", 333);
+        log::info!("async module3,log api,info log>>{}", 444);
+        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+    }
+}
+
+mod module4 {
+    use tklog::{handle::FileTimeMode, Format, LogOption, LEVEL};
+    pub async fn testmod() {
+        tklog::ASYNC_LOG.set_mod_option("testlog::module4", LogOption { level: Some(LEVEL::Info), format: Some(Format::Date), formatter: None, console: None, fileoption: Some(Box::new(FileTimeMode::new("module4.log", tklog::MODE::DAY, 0, true))) }).await.uselog();
+        tklog::async_debug!("async module4,tklog api,LOG debug log>>", 123);
+        tklog::async_info!("async module4,tklog api,LOG info log>>", 456);
+        log::debug!("async module4,log api,debug log>>{}", 333);
+        log::info!("async module4,log api,info log>>{}", 444);
+        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+    }
+}
+
+#[tokio::test]
+async fn testmod4() {
+    module3::testmod().await;
+    module4::testmod().await;
+}
+```
+
+##### Execution Result:
+
+```text
+[DEBUG] 2024-06-19 10:59:26 testlog.rs 85:async module3,tklog api,LOG debug log>>,123
+[INFO] 2024-06-19 10:59:26 testlog.rs 86:async module3,tklog api,LOG info log>>,456
+[DEBUG] 2024-06-19 10:59:26 testlog.rs 87:async module3,log api,debug log>>333
+[INFO] 2024-06-19 10:59:26 testlog.rs 88:async module3,log api,info log>>444
+[INFO] 2024-06-19 10:59:27 testlog.rs 98:async module4,tklog api,LOG info log>>,456
+[INFO] 2024-06-19 10:59:27 testlog.rs 100:async module4,log api,info log>>444
+
+```
+
+------------
+
+## tklog supports  multi-instance formatting format! And asynchronous format!
 
 ###### Example：
 
@@ -441,22 +567,38 @@ async fn test_synclog() {
 ### Benchmark Test
 
 ```text
+log_benchmark           time:   [2.9703 µs 2.9977 µs 3.0256 µs]
+                        			change: [-95.539% -95.413% -95.268%] (p = 0.00 < 0.05)
+                        			Performance has improved.
+Found 9 outliers among 100 measurements (9.00%)
+  4 (4.00%) high mild
+  5 (5.00%) high severe
+```
+```text
+log_benchmark           time:   [2.9685 µs 3.0198 µs 3.0678 µs]
+                        			change: [-3.6839% -1.2170% +1.0120%] (p = 0.34 > 0.05)
+                        			No change in performance detected.
+Found 7 outliers among 100 measurements (7.00%)
+  7 (7.00%) high mild
+```
+
+
+```text
 test_debug              time:   [3.3747 µs 3.4599 µs 3.5367 µs]
-                                change: [-69.185% -68.009% -66.664%] (p = 0.00 < 0.05)
-                                Performance has improved.
+                               change: [-69.185% -68.009% -66.664%] (p = 0.00 < 0.05)
+                               Performance has improved.
 Found 9 outliers among 100 measurements (9.00%)
   6 (6.00%) high mild
   3 (3.00%) high severe
 ```
-###### Explanation: The time range gives three data points representing the minimum test execution time (3.3747 microseconds), the value near the average (3.4599 microseconds), and the maximum (3.5367 microseconds).
-
-```text
+```rust
 test_debug              time:   [3.8377 µs 3.8881 µs 3.9408 µs]
-                               change: [-66.044% -65.200% -64.363%] (p = 0.00 < 0.05)
-                               Performance has improved.
+                                change: [-66.044% -65.200% -64.363%] (p = 0.00 < 0.05)
+                                Performance has improved.
 Found 2 outliers among 100 measurements (2.00%)
   2 (2.00%) high mild
 ```
-###### Explanation: The test runs ranged from 3.8377 microseconds to 3.9408 microseconds, covering an approximate distribution where 3.8881 microseconds is approximately the average or median execution time over this period
 
-**Conclusion: Log printing function performance: 3µs /op - 4µs /op (microsecond/time)**
+###### Explanation: The time range gives three data points representing the minimum test execution time (3.3747 microseconds), the value near the average (3.4599 microseconds), and the maximum (3.5367 microseconds).
+
+**Conclusion: Log printing function performance: 2 µs /op - 3.9 µs /op (microsecond/time)**
