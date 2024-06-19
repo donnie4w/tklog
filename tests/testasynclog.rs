@@ -11,8 +11,8 @@ async fn async_log_init() {
     ASYNC_LOG
         .set_console(true)
         .set_level(LEVEL::Trace)
-        .set_format(Format::LevelFlag | Format::Time | Format::ShortFileName)
-        .set_cutmode_by_size("tklog_async.txt", 10000, 10, true)
+        .set_format(Format::LevelFlag | Format::Date | Format::Time | Format::ShortFileName)
+        .set_cutmode_by_size("tklog_async.log", 10000, 10, true)
         .await;
 }
 
