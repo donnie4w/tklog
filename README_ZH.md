@@ -365,11 +365,11 @@ async fn test_synclog() {
 
 ##### LogOption对象说明
 
--      level      日志级别
--      format    日志格式
--      formatter   日志输出自定义格式
--      console    控制台日志设置
--      fileoption		文件日志设置
+- level      日志级别
+- format    日志格式
+- formatter   日志输出自定义格式
+- console    控制台日志设置
+- fileoption		文件日志设置
 
 
 #####  `set_mod_option` 示例：
@@ -546,16 +546,16 @@ async fn testmod4() {
 
 ```text
 log_benchmark           time:   [2.9703 µs 2.9977 µs 3.0256 µs]
-                        			change: [-95.539% -95.413% -95.268%] (p = 0.00 < 0.05)
-                        			Performance has improved.
+                        		change: [-95.539% -95.413% -95.268%] (p = 0.00 < 0.05)
+                        		Performance has improved.
 Found 9 outliers among 100 measurements (9.00%)
   4 (4.00%) high mild
   5 (5.00%) high severe
 ```
 ```text
 log_benchmark           time:   [2.9685 µs 3.0198 µs 3.0678 µs]
-                        			change: [-3.6839% -1.2170% +1.0120%] (p = 0.34 > 0.05)
-                        			No change in performance detected.
+                        		change: [-3.6839% -1.2170% +1.0120%] (p = 0.34 > 0.05)
+                        		No change in performance detected.
 Found 7 outliers among 100 measurements (7.00%)
   7 (7.00%) high mild
 ```
