@@ -19,15 +19,17 @@ use crate::{
     handle::{FileSizeMode, FileTimeMode, Handle, Handler},
     l2tk,
     syncfile::FileHandler,
-    tk2l,
     tklog::synclog,
-    LEVEL, MODE, PRINTMODE, TKLOG2SYNCLOG,
-};
-use std::sync::{
-    mpsc::{channel, Sender},
-    Mutex,
+    LogOption, LEVEL, MODE, PRINTMODE, TKLOG2SYNCLOG,
 };
 use std::thread;
+use std::{
+    collections::HashMap,
+    sync::{
+        mpsc::{channel, Sender},
+        Mutex,
+    },
+};
 
 /// this is the tklog encapsulated Logger whose File operations
 /// are based on the standard library std::fs::File,therefore,
@@ -52,10 +54,11 @@ use std::thread;
 ///     .set_cutmode_by_size("tklog.log", 1<<20, 0, true);
 /// ```
 pub struct Logger {
-    sender: Sender<String>,
+    sender: Sender<(String, String)>,
     loghandle: Handle,
     mutex: Mutex<u32>,
     pub mode: PRINTMODE,
+    modmap: HashMap<String, Handle>,
 }
 
 impl Logger {
@@ -67,32 +70,46 @@ impl Logger {
         let (sender, receiver) = channel();
         thread::spawn(move || {
             while let Ok(s) = receiver.recv() {
-                let msg: String = s;
-                crate::log!(msg.as_str());
+                let (module, msg) = s;
+                let m1: String = module;
+                let m2: String = msg;
+                crate::log!(m1.as_str(), m2.as_str());
             }
         });
-        Logger {
-            sender,
-            loghandle: handle,
-            mutex: Mutex::new(0),
-            mode: PRINTMODE::DELAY,
+        Logger { sender, loghandle: handle, mutex: Mutex::new(0), mode: PRINTMODE::DELAY, modmap: HashMap::new() }
+    }
+
+    pub fn print(&mut self, module: &str, message: &str) {
+        if module != "" && self.modmap.len() > 0 {
+            if let Some(handle) = self.modmap.get_mut(module) {
+                let _ = handle.print(message);
+                return;
+            }
         }
-    }
-
-    pub fn print(&mut self, message: &str) {
         let _ = self.loghandle.print(message);
     }
 
-    pub fn safeprint(&mut self, message: &str) {
+    pub fn safeprint(&mut self, module: &str, message: &str) {
         let _ = &self.mutex.lock();
+        if module != "" && self.modmap.len() > 0 {
+            if let Some(handle) = self.modmap.get_mut(module) {
+                let _ = handle.print(message);
+                return;
+            }
+        }
         let _ = self.loghandle.print(message);
     }
 
-    pub fn log(&self, message: String) {
-        self.sender.send(message).expect("send error");
+    pub fn log(&self, module: String, message: String) {
+        self.sender.send((module, message)).expect("send error");
     }
 
-    pub fn get_level(&self) -> LEVEL {
+    pub fn get_level(&self, module: &str) -> LEVEL {
+        if module != "" && self.modmap.len() > 0 {
+            if let Some(h) = self.modmap.get(module) {
+                return h.get_level();
+            }
+        }
         return self.loghandle.get_level();
     }
 
@@ -135,29 +152,29 @@ impl Logger {
         self
     }
 
-    pub fn set_cutmode_by_size(
-        &mut self,
-        filename: &str,
-        maxsize: u64,
-        maxbackups: u32,
-        compress: bool,
-    ) -> &mut Self {
+    pub fn set_cutmode_by_size(&mut self, filename: &str, maxsize: u64, maxbackups: u32, compress: bool) -> &mut Self {
         let fsm = FileSizeMode::new(filename, maxsize, maxbackups, compress);
         let fh = FileHandler::new(Box::new(fsm));
         self.loghandle.handler.set_file_handler(fh.unwrap());
         self
     }
 
-    pub fn set_cutmode_by_time(
-        &mut self,
-        filename: &str,
-        mode: MODE,
-        maxbackups: u32,
-        compress: bool,
-    ) -> &mut Self {
+    pub fn set_cutmode_by_time(&mut self, filename: &str, mode: MODE, maxbackups: u32, compress: bool) -> &mut Self {
         let ftm = FileTimeMode::new(filename, mode, maxbackups, compress);
         let fh = FileHandler::new(Box::new(ftm));
         self.loghandle.handler.set_file_handler(fh.unwrap());
+        self
+    }
+
+    pub fn set_option(&mut self, option: LogOption) -> &mut Self {
+        self.loghandle.set_option(option);
+        self
+    }
+
+    pub fn set_mod_option(&mut self, module: &str, option: LogOption) -> &mut Self {
+        let mut handler = Handle::new(None);
+        handler.set_option(option);
+        self.modmap.insert(module.to_string(), handler);
         self
     }
 }
@@ -205,28 +222,30 @@ impl Log {
         self
     }
 
-    pub fn set_cutmode_by_size(
-        &self,
-        filename: &str,
-        maxsize: u64,
-        maxbackups: u32,
-        compress: bool,
-    ) -> &Self {
+    pub fn set_cutmode_by_size(&self, filename: &str, maxsize: u64, maxbackups: u32, compress: bool) -> &Self {
         unsafe {
             synclog.set_cutmode_by_size(filename, maxsize, maxbackups, compress);
         }
         self
     }
 
-    pub fn set_cutmode_by_time(
-        &self,
-        filename: &str,
-        mode: MODE,
-        maxbackups: u32,
-        compress: bool,
-    ) -> &Self {
+    pub fn set_cutmode_by_time(&self, filename: &str, mode: MODE, maxbackups: u32, compress: bool) -> &Self {
         unsafe {
             synclog.set_cutmode_by_time(filename, mode, maxbackups, compress);
+        }
+        self
+    }
+
+    pub fn set_option(&self, option: LogOption) -> &Self {
+        unsafe {
+            synclog.set_option(option);
+        }
+        self
+    }
+
+    pub fn set_mod_option(&self, module: &str, option: LogOption) -> &Self {
+        unsafe {
+            synclog.set_mod_option(module, option);
         }
         self
     }
@@ -239,37 +258,38 @@ impl Log {
 
     pub fn uselog(&self) -> &Self {
         let _ = log::set_logger(&TKLOG2SYNCLOG);
-        unsafe {
-            log::set_max_level(tk2l(synclog.get_level()));
-        }
+        log::set_max_level(log::LevelFilter::Trace);
         self
     }
 }
 
 impl log::Log for Log {
-    fn enabled(&self, metadata: &log::Metadata) -> bool {
-        unsafe { l2tk(metadata.level()) >= synclog.get_level() }
+    fn enabled(&self, _: &log::Metadata) -> bool {
+        return true;
     }
     fn log(&self, record: &log::Record) {
-        if self.enabled(record.metadata()) {
-            let level = l2tk(record.level());
-            let args = record.args();
-            let mut file = "";
-            let mut line: u32 = 0;
-            if self.is_file_line() {
-                line = record.line().unwrap_or(0);
-                file = record.file().unwrap_or("");
-            }
+        let level = l2tk(record.level());
+        let mut module = "";
+        if let Some(m) = record.module_path() {
+            module = m;
             unsafe {
-                if synclog.mode == PRINTMODE::DELAY {
-                    synclog.log(synclog.fmt(level, file, line, arguments_to_string(args)));
-                } else {
-                    synclog.safeprint(
-                        synclog
-                            .fmt(level, file, line, arguments_to_string(args))
-                            .as_str(),
-                    );
+                if synclog.get_level(module) > level {
+                    return;
                 }
+            }
+        }
+        let args = record.args();
+        let mut file = "";
+        let mut line: u32 = 0;
+        if self.is_file_line() {
+            line = record.line().unwrap_or(0);
+            file = record.file().unwrap_or("");
+        }
+        unsafe {
+            if synclog.mode == PRINTMODE::DELAY {
+                synclog.log(module.to_string(), synclog.fmt(level, file, line, arguments_to_string(args)));
+            } else {
+                synclog.safeprint(module, synclog.fmt(level, file, line, arguments_to_string(args)).as_str());
             }
         }
     }
@@ -278,10 +298,11 @@ impl log::Log for Log {
 
 #[macro_export]
 macro_rules! log {
-    ($msg:expr) => {
+    ($module:expr,$msg:expr) => {
         let msg: &str = $msg;
+        let module: &str = $module;
         unsafe {
-            synclog.print(msg);
+            synclog.print(module, msg);
         }
     };
 }
@@ -338,7 +359,8 @@ macro_rules! fatal {
 macro_rules! log_common {
     ($level:expr, $($arg:expr),*) => {
         unsafe {
-            if $crate::tklog::synclog.get_level() <= $level {
+            let module = module_path!();
+            if $crate::tklog::synclog.get_level(module) <= $level {
                 let formatted_args: Vec<String> = vec![$(format!("{}", $arg)),*];
                 let mut file = "";
                 let mut line = 0;
@@ -348,9 +370,9 @@ macro_rules! log_common {
                 }
                 let msg: String = formatted_args.join(",");
                 if  $crate::tklog::synclog.mode==$crate::PRINTMODE::DELAY {
-                    $crate::tklog::synclog.log($crate::tklog::synclog.fmt($level, file, line, msg));
+                    $crate::tklog::synclog.log(module.to_string(),$crate::tklog::synclog.fmt($level, file, line, msg));
                 }else {
-                    $crate::tklog::synclog.safeprint($crate::tklog::synclog.fmt($level, file, line, msg).as_str());
+                    $crate::tklog::synclog.safeprint(module,$crate::tklog::synclog.fmt($level, file, line, msg).as_str());
                 }
             }
         }
