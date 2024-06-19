@@ -14,11 +14,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use tokio::sync::mpsc;
+use std::collections::HashMap;
+
 use crate::asyncfile::FileHandler;
 use crate::handle::{FileSizeMode, FileTimeMode, Handle, Handler};
 use crate::tklog::asynclog;
-use crate::{arguments_to_string, l2tk, tk2l, LEVEL, MODE, PRINTMODE, TKLOG2ASYNC_LOG};
+use crate::{arguments_to_string, l2tk, LogOption, LEVEL, MODE, PRINTMODE, TKLOG2ASYNC_LOG};
+use tokio::sync::mpsc;
 
 /// this is the tklog encapsulated Logger whose File operations
 /// are based on tokio, Therefore, it supports asynchronous scenarios
@@ -42,47 +44,61 @@ use crate::{arguments_to_string, l2tk, tk2l, LEVEL, MODE, PRINTMODE, TKLOG2ASYNC
 /// };
 /// ```
 pub struct Logger {
-    sender: mpsc::UnboundedSender<String>,
+    sender: mpsc::UnboundedSender<(String, String)>,
     loghandle: Handle,
     mutex: tokio::sync::Mutex<u32>,
     pub mode: PRINTMODE,
+    modmap: HashMap<String, Handle>,
 }
 
 impl Logger {
     pub fn new() -> Self {
         Self::new_with_handle(Handle::new(None))
     }
-
     pub fn new_with_handle(handle: Handle) -> Self {
         let (sender, mut receiver) = mpsc::unbounded_channel();
         tokio::spawn(async move {
             while let Some(message) = receiver.recv().await {
-                let msg: String = message;
-                crate::async_log!(msg.as_str());
+                let (module, msg) = message;
+                let m1: String = module;
+                let m2: String = msg;
+                crate::async_log!(m1.as_str(), m2.as_str());
             }
         });
-        Logger {
-            sender,
-            loghandle: handle,
-            mutex: tokio::sync::Mutex::new(0),
-            mode: PRINTMODE::DELAY,
+        Logger { sender, loghandle: handle, mutex: tokio::sync::Mutex::new(0), mode: PRINTMODE::DELAY, modmap: HashMap::new() }
+    }
+
+    pub fn log(&self, module: String, message: String) {
+        self.sender.send((module, message)).expect("send error");
+    }
+
+    pub async fn print(&mut self, module: &str, message: &str) {
+        if module != "" && self.modmap.len() > 0 {
+            if let Some(handle) = self.modmap.get_mut(module) {
+                let _ = handle.async_print(message).await;
+                return;
+            }
         }
-    }
-
-    pub fn log(&self, message: String) {
-        self.sender.send(message).expect("send error");
-    }
-
-    pub async fn print(&mut self, message: &str) {
         let _ = self.loghandle.async_print(message).await;
     }
 
-    pub async fn safeprint(&mut self, message: &str) {
+    pub async fn safeprint(&mut self, module: &str, message: &str) {
         let _ = &self.mutex.lock().await;
+        if module != "" && self.modmap.len() > 0 {
+            if let Some(handle) = self.modmap.get_mut(module) {
+                let _ = handle.async_print(message).await;
+                return;
+            }
+        }
         let _ = self.loghandle.async_print(message).await;
     }
 
-    pub fn get_level(&self) -> LEVEL {
+    pub fn get_level(&self, module: &str) -> LEVEL {
+        if module != "" && self.modmap.len() > 0 {
+            if let Some(h) = self.modmap.get(module) {
+                return h.get_level();
+            }
+        }
         return self.loghandle.get_level();
     }
 
@@ -126,29 +142,29 @@ impl Logger {
         self
     }
 
-    pub async fn set_cutmode_by_size(
-        &mut self,
-        filename: &str,
-        maxsize: u64,
-        maxbackups: u32,
-        compress: bool,
-    ) -> &mut Self {
+    pub async fn set_cutmode_by_size(&mut self, filename: &str, maxsize: u64, maxbackups: u32, compress: bool) -> &mut Self {
         let fsm = FileSizeMode::new(filename, maxsize, maxbackups, compress);
         let fh = FileHandler::new(Box::new(fsm)).await;
         self.loghandle.handler.set_async_file_handler(fh.unwrap());
         self
     }
 
-    pub async fn set_cutmode_by_time(
-        &mut self,
-        filename: &str,
-        mode: MODE,
-        maxbackups: u32,
-        compress: bool,
-    ) -> &mut Self {
+    pub async fn set_cutmode_by_time(&mut self, filename: &str, mode: MODE, maxbackups: u32, compress: bool) -> &mut Self {
         let ftm = FileTimeMode::new(filename, mode, maxbackups, compress);
         let fh = FileHandler::new(Box::new(ftm)).await;
         self.loghandle.handler.set_async_file_handler(fh.unwrap());
+        self
+    }
+
+    pub async fn set_option(&mut self, option: LogOption) -> &mut Self {
+        self.loghandle.async_set_option(option).await;
+        self
+    }
+
+    pub async fn set_mod_option(&mut self, module: &str, option: LogOption) -> &mut Self {
+        let mut handler = Handle::new(None);
+        handler.async_set_option(option).await;
+        self.modmap.insert(module.to_string(), handler);
         self
     }
 }
@@ -196,32 +212,16 @@ impl Log {
         self
     }
 
-    pub async fn set_cutmode_by_size(
-        &self,
-        filename: &str,
-        maxsize: u64,
-        maxbackups: u32,
-        compress: bool,
-    ) -> &Self {
+    pub async fn set_cutmode_by_size(&self, filename: &str, maxsize: u64, maxbackups: u32, compress: bool) -> &Self {
         unsafe {
-            asynclog
-                .set_cutmode_by_size(filename, maxsize, maxbackups, compress)
-                .await;
+            asynclog.set_cutmode_by_size(filename, maxsize, maxbackups, compress).await;
         }
         self
     }
 
-    pub async fn set_cutmode_by_time(
-        &self,
-        filename: &str,
-        mode: MODE,
-        maxbackups: u32,
-        compress: bool,
-    ) -> &Self {
+    pub async fn set_cutmode_by_time(&self, filename: &str, mode: MODE, maxbackups: u32, compress: bool) -> &Self {
         unsafe {
-            asynclog
-                .set_cutmode_by_time(filename, mode, maxbackups, compress)
-                .await;
+            asynclog.set_cutmode_by_time(filename, mode, maxbackups, compress).await;
         }
         self
     }
@@ -232,32 +232,52 @@ impl Log {
         }
     }
 
+    pub async fn set_option(&self, option: LogOption) -> &Self {
+        unsafe {
+            asynclog.set_option(option).await;
+        }
+        self
+    }
+
+    pub async fn set_mod_option(&self, module: &str, option: LogOption) -> &Self {
+        unsafe {
+            asynclog.set_mod_option(module, option).await;
+        }
+        self
+    }
+
     pub fn uselog(&self) -> &Self {
         let _ = log::set_logger(&TKLOG2ASYNC_LOG);
-        unsafe {
-            log::set_max_level(tk2l(asynclog.get_level()));
-        }
+        log::set_max_level(log::LevelFilter::Trace);
         self
     }
 }
 
 impl log::Log for Log {
-    fn enabled(&self, metadata: &log::Metadata) -> bool {
-        unsafe { l2tk(metadata.level()) >= asynclog.get_level() }
+    fn enabled(&self, _: &log::Metadata) -> bool {
+        return true;
     }
     fn log(&self, record: &log::Record) {
-        if self.enabled(record.metadata()) {
-            let level = l2tk(record.level());
-            let args = record.args();
-            let mut file = "";
-            let mut line: u32 = 0;
-            if self.is_file_line() {
-                line = record.line().unwrap_or(0);
-                file = record.file().unwrap_or("");
-            }
+        let level = l2tk(record.level());
+        let mut module = "";
+        if let Some(m) = record.module_path() {
+            module = m;
             unsafe {
-                asynclog.log(asynclog.fmt(level, file, line, arguments_to_string(args)));
+                if asynclog.get_level(module) > level {
+                    return;
+                }
             }
+        }
+
+        let args = record.args();
+        let mut file = "";
+        let mut line: u32 = 0;
+        if self.is_file_line() {
+            line = record.line().unwrap_or(0);
+            file = record.file().unwrap_or("");
+        }
+        unsafe {
+            asynclog.log(module.to_string(), asynclog.fmt(level, file, line, arguments_to_string(args)));
         }
     }
     fn flush(&self) {}
@@ -265,10 +285,11 @@ impl log::Log for Log {
 
 #[macro_export]
 macro_rules! async_log {
-    ($msg:expr) => {
+    ($module:expr,$msg:expr) => {
         let msg: &str = $msg;
+        let module: &str = $module;
         unsafe {
-            crate::tklog::asynclog.print(msg).await;
+            crate::tklog::asynclog.print(module, msg).await;
         }
     };
 }
@@ -325,7 +346,8 @@ macro_rules! async_fatal {
 macro_rules! async_log_common {
     ($level:expr, $($arg:expr),*) => {
         unsafe {
-            if $crate::tklog::asynclog.get_level() <= $level {
+            let module = module_path!();
+            if $crate::tklog::asynclog.get_level(module) <= $level {
                 let formatted_args: Vec<String> = vec![$(format!("{}", $arg)),*];
                 let mut file = "";
                 let mut line = 0;
@@ -335,9 +357,9 @@ macro_rules! async_log_common {
                 }
                 let msg: String = formatted_args.join(",");
                 if  $crate::tklog::asynclog.mode==$crate::PRINTMODE::DELAY {
-                    $crate::tklog::asynclog.log($crate::tklog::asynclog.fmt($level, file, line, msg));
+                    $crate::tklog::asynclog.log(module.to_string(),$crate::tklog::asynclog.fmt($level, file, line, msg));
                 }else {
-                    $crate::tklog::asynclog.safeprint($crate::tklog::asynclog.fmt($level, file, line, msg).as_str()).await;
+                    $crate::tklog::asynclog.safeprint(module,$crate::tklog::asynclog.fmt($level, file, line, msg).as_str()).await;
                 }
             }
         }
