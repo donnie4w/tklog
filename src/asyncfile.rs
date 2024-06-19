@@ -22,6 +22,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use chrono::{DateTime, Local};
 use regex::Regex;
 use tokio::{
     fs::{self, File, OpenOptions},
@@ -29,7 +30,8 @@ use tokio::{
 };
 
 use crate::{
-    async_gzip, getbackup_with_time, handle::FileOption, passtimemode, timesec, ErrCode, CUTMODE, MODE
+    async_gzip, getbackup_with_time, handle::FileOption, passtimemode, timesec, ErrCode, CUTMODE,
+    MODE,
 };
 
 pub struct FileHandler {
@@ -58,8 +60,11 @@ impl FileHandler {
         }
 
         let f = file.unwrap();
-        let metadata = f.metadata().await?.modified()?;
-        let startsec = metadata.duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
+        let modified_time = f.metadata().await?.modified()?;
+
+        let datetime_utc: DateTime<chrono::Utc> = modified_time.into();
+        let datetime_local = datetime_utc.with_timezone(&Local);
+        let startsec = datetime_local.naive_local().and_utc().timestamp() as u64;
 
         let fh = FileHandler {
             filename: fo.filename(),
@@ -69,7 +74,7 @@ impl FileHandler {
             cutmode: fo.mode(),
             timemode: fo.timemode(),
             filesize: fs::metadata(&log_path).await?.len(),
-            filehandle:f,
+            filehandle: f,
             startsec,
         };
 
