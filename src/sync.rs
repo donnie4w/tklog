@@ -17,18 +17,15 @@
 use crate::{
     arguments_to_string,
     handle::{FileSizeMode, FileTimeMode, Handle, Handler},
-    l2tk,
+    l2tk, log_fmt,
     syncfile::FileHandler,
     tklog::synclog,
-    LogOption, LEVEL, MODE, PRINTMODE, TKLOG2SYNCLOG,
+    HasOption, LogOption, LEVEL, MODE, PRINTMODE, TKLOG2SYNCLOG,
 };
 use std::thread;
 use std::{
     collections::HashMap,
-    sync::{
-        mpsc::{channel, Sender},
-        Mutex,
-    },
+    sync::mpsc::{channel, Sender},
 };
 
 /// this is the tklog encapsulated Logger whose File operations
@@ -56,9 +53,9 @@ use std::{
 pub struct Logger {
     sender: Sender<(String, String)>,
     loghandle: Handle,
-    mutex: Mutex<u32>,
+    mutex: std::sync::Mutex<u32>,
     pub mode: PRINTMODE,
-    modmap: HashMap<String, Handle>,
+    modmap: HashMap<String, (HasOption, Handle)>,
 }
 
 impl Logger {
@@ -76,28 +73,42 @@ impl Logger {
                 crate::log!(m1.as_str(), m2.as_str());
             }
         });
-        Logger { sender, loghandle: handle, mutex: Mutex::new(0), mode: PRINTMODE::DELAY, modmap: HashMap::new() }
+        Logger { sender, loghandle: handle, mutex: std::sync::Mutex::new(0), mode: PRINTMODE::DELAY, modmap: HashMap::new() }
     }
 
     pub fn print(&mut self, module: &str, message: &str) {
+        let mut console = self.loghandle.get_console();
         if module != "" && self.modmap.len() > 0 {
-            if let Some(handle) = self.modmap.get_mut(module) {
-                let _ = handle.print(message);
-                return;
+            if let Some(mm) = self.modmap.get_mut(module) {
+                let (has, h) = mm;
+                if has.isconsole {
+                    console = h.get_console();
+                }
+                if has.isfileoption {
+                    let _ = h.print(console, message);
+                    return;
+                }
             }
         }
-        let _ = self.loghandle.print(message);
+        let _ = self.loghandle.print(console, message);
     }
 
     pub fn safeprint(&mut self, module: &str, message: &str) {
+        let mut console = self.loghandle.get_console();
         let _ = &self.mutex.lock();
         if module != "" && self.modmap.len() > 0 {
-            if let Some(handle) = self.modmap.get_mut(module) {
-                let _ = handle.print(message);
-                return;
+            if let Some(mm) = self.modmap.get_mut(module) {
+                let (has, h) = mm;
+                if has.isconsole {
+                    console = h.get_console();
+                }
+                if has.isfileoption {
+                    let _ = h.print(console, message);
+                    return;
+                }
             }
         }
-        let _ = self.loghandle.print(message);
+        let _ = self.loghandle.print(console, message);
     }
 
     pub fn log(&self, module: String, message: String) {
@@ -106,23 +117,47 @@ impl Logger {
 
     pub fn get_level(&self, module: &str) -> LEVEL {
         if module != "" && self.modmap.len() > 0 {
-            if let Some(h) = self.modmap.get(module) {
-                return h.get_level();
+            if let Some(mm) = self.modmap.get(module) {
+                let (l, h) = mm;
+                if l.islevel {
+                    return h.get_level();
+                }
             }
         }
-        return self.loghandle.get_level();
+        self.loghandle.get_level()
     }
 
     pub fn set_handler(&mut self, handler: Handler) {
         self.loghandle.set_handler(handler);
     }
 
-    pub fn is_file_line(&self) -> bool {
+    pub fn is_file_line(&self, module: &str) -> bool {
+        if module != "" && self.modmap.len() > 0 {
+            if let Some(mm) = self.modmap.get(module) {
+                let (has, h) = mm;
+                if has.isformat {
+                    return h.is_file_line();
+                }
+            }
+        }
         self.loghandle.is_file_line()
     }
 
-    pub fn fmt(&mut self, level: LEVEL, filename: &str, line: u32, message: String) -> String {
-        self.loghandle.format(level, filename, line, message)
+    pub fn fmt(&self, module: &str, level: LEVEL, filename: &str, line: u32, message: String) -> String {
+        let mut fmat = self.loghandle.get_format();
+        let mut formatter = self.loghandle.get_formatter();
+        if module != "" && self.modmap.len() > 0 {
+            if let Some(mm) = self.modmap.get(module) {
+                let (has, h) = mm;
+                if has.isformat {
+                    fmat = h.get_format();
+                }
+                if has.isformatter {
+                    formatter = h.get_formatter();
+                }
+            }
+        }
+        log_fmt(fmat, formatter, level, filename, line, message)
     }
 
     pub fn set_printmode(&mut self, mode: PRINTMODE) -> &mut Self {
@@ -173,8 +208,15 @@ impl Logger {
 
     pub fn set_mod_option(&mut self, module: &str, option: LogOption) -> &mut Self {
         let mut handler = Handle::new(None);
+        let ho = HasOption {
+            islevel: option.level.is_some(),
+            isformat: option.format.is_some(),
+            isformatter: option.formatter.is_some(),
+            isconsole: option.console.is_some(),
+            isfileoption: option.fileoption.is_some(),
+        };
         handler.set_option(option);
-        self.modmap.insert(module.to_string(), handler);
+        self.modmap.insert(module.to_string(), (ho, handler));
         self
     }
 }
@@ -250,9 +292,9 @@ impl Log {
         self
     }
 
-    fn is_file_line(&self) -> bool {
+    fn is_file_line(&self, module: &str) -> bool {
         unsafe {
-            return synclog.is_file_line();
+            return synclog.is_file_line(module);
         }
     }
 
@@ -281,15 +323,15 @@ impl log::Log for Log {
         let args = record.args();
         let mut file = "";
         let mut line: u32 = 0;
-        if self.is_file_line() {
+        if self.is_file_line(module) {
             line = record.line().unwrap_or(0);
             file = record.file().unwrap_or("");
         }
         unsafe {
             if synclog.mode == PRINTMODE::DELAY {
-                synclog.log(module.to_string(), synclog.fmt(level, file, line, arguments_to_string(args)));
+                synclog.log(module.to_string(), synclog.fmt(module, level, file, line, arguments_to_string(args)));
             } else {
-                synclog.safeprint(module, synclog.fmt(level, file, line, arguments_to_string(args)).as_str());
+                synclog.safeprint(module, synclog.fmt(module, level, file, line, arguments_to_string(args)).as_str());
             }
         }
     }
@@ -364,15 +406,15 @@ macro_rules! log_common {
                 let formatted_args: Vec<String> = vec![$(format!("{}", $arg)),*];
                 let mut file = "";
                 let mut line = 0;
-                if $crate::tklog::synclog.is_file_line() {
+                if $crate::tklog::synclog.is_file_line(module) {
                     file = file!();
                     line = line!();
                 }
                 let msg: String = formatted_args.join(",");
                 if  $crate::tklog::synclog.mode==$crate::PRINTMODE::DELAY {
-                    $crate::tklog::synclog.log(module.to_string(),$crate::tklog::synclog.fmt($level, file, line, msg));
+                    $crate::tklog::synclog.log(module.to_string(),$crate::tklog::synclog.fmt(module,$level, file, line, msg));
                 }else {
-                    $crate::tklog::synclog.safeprint(module,$crate::tklog::synclog.fmt($level, file, line, msg).as_str());
+                    $crate::tklog::synclog.safeprint(module,$crate::tklog::synclog.fmt(module,$level, file, line, msg).as_str());
                 }
             }
         }
