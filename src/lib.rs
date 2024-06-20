@@ -52,6 +52,14 @@ pub struct LogOption {
     pub fileoption: Option<Box<dyn handle::FileOption>>,
 }
 
+struct HasOption {
+    pub islevel: bool,
+    pub isformat: bool,
+    pub isformatter: bool,
+    pub isconsole: bool,
+    pub isfileoption: bool,
+}
+
 #[allow(non_upper_case_globals, non_snake_case)]
 pub mod Format {
     pub const Nano: u8 = 0;
@@ -73,6 +81,8 @@ impl ErrCode {
         format!("{:?}", self)
     }
 }
+
+const DEFAULT_FORMATTER: &str = "{level}{time} {file}:{message}\n";
 
 pub const LOG: Lazy<sync::Log> = Lazy::new(|| sync::Log::new());
 
@@ -183,13 +193,7 @@ async fn async_gzip(filename: &str) -> io::Result<()> {
     Ok(())
 }
 
-fn parse_and_format_log(
-    format_str: &str,
-    level: &str,
-    time: &str,
-    file: &str,
-    message: &str,
-) -> String {
+fn parse_and_format_log(format_str: &str, level: &str, time: &str, file: &str, message: &str) -> String {
     let mut result = String::new();
     let mut in_placeholder = false;
     let mut placeholder = String::new();
@@ -233,6 +237,74 @@ fn getbackup_with_time(startsec: u64, timemode: MODE) -> String {
             let formatted_date = start_time.format("%Y%m");
             formatted_date.to_string()
         }
+    }
+}
+
+fn log_fmt(fmat: u8, formatter: &str, level: LEVEL, filename: &str, line: u32, msg: String) -> String {
+    if fmat == Format::Nano {
+        return msg;
+    }
+
+    let mut levelflag = "";
+    let mut time = String::new();
+    let mut file = String::new();
+
+    if fmat & Format::LevelFlag != 0 {
+        levelflag = match level {
+            LEVEL::Trace => "[TRACE]",
+            LEVEL::Debug => "[DEBUG]",
+            LEVEL::Info => "[INFO]",
+            LEVEL::Warn => "[WARN]",
+            LEVEL::Error => "[ERROR]",
+            LEVEL::Fatal => "[FATAL]",
+            LEVEL::Off => "",
+        };
+    }
+
+    if fmat & (Format::Date | Format::Time | Format::Microseconds) != 0 {
+        let ts = timenow();
+        if fmat & Format::Date != 0 {
+            time.push_str(ts[0].as_str());
+        }
+        if fmat & (Format::Time | Format::Microseconds) != 0 {
+            if !time.is_empty() {
+                time.push(' ');
+            }
+            time.push_str(ts[1].as_str());
+            if fmat & Format::Microseconds != 0 {
+                time.push_str(ts[2].as_str());
+            }
+        }
+    }
+    if fmat & (Format::LongFileName | Format::ShortFileName) != 0 {
+        let mut f = filename;
+        if fmat & Format::ShortFileName != 0 {
+            f = get_short_file_path(f)
+        }
+        file.push_str(f);
+        file.push(' ');
+        file.push_str(line.to_string().as_str());
+    }
+
+    if formatter.eq(DEFAULT_FORMATTER) {
+        let mut r = String::new();
+        if !levelflag.is_empty() {
+            r.push_str(&levelflag);
+            r.push(' ');
+        }
+        if !time.is_empty() {
+            r.push_str(&time);
+            r.push(' ');
+        }
+        if !file.is_empty() {
+            r.push_str(&file);
+            r.push(':');
+        }
+        r.push_str(&msg);
+        r.push('\n');
+        return r;
+    } else {
+        return parse_and_format_log(formatter, &levelflag, time.as_str(), file.as_str(), msg.as_str());
     }
 }
 
