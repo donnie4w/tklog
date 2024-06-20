@@ -79,11 +79,11 @@ macro_rules! async_formats {
             if logger.get_level(module) <= level {
                 let mut file = "";
                 let mut line = 0;
-                if logger.is_file_line() {
+                if logger.is_file_line(module) {
                     file = file!();
                     line = line!();
                 }
-                let ss = logger.fmt($level, file, line, format!($($arg),*));
+                let ss = logger.fmt(module,$level, file, line, format!($($arg),*));
                 logger.print(module,ss.as_str()).await;
             }
         }
@@ -102,12 +102,12 @@ macro_rules! async_logs_common {
                 let formatted_args: Vec<String> = vec![$(format!("{}", $arg)),*];
                 let mut file = "";
                 let mut line = 0;
-                if logger.is_file_line() {
+                if logger.is_file_line(module) {
                     file = file!();
                     line = line!();
                 }
                 let msg: String = formatted_args.join(",");
-                let ss = logger.fmt($level, file, line, msg);
+                let ss = logger.fmt(module,$level, file, line, msg);
                 logger.print(module,ss.as_str()).await;
             }
         }
