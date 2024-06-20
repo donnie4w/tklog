@@ -18,10 +18,7 @@ use std::io;
 
 use tokio::io::AsyncWriteExt;
 
-use crate::{
-    asyncfile, get_short_file_path, parse_and_format_log, syncfile, timenow, Format, LogOption,
-    CUTMODE, LEVEL, MODE,
-};
+use crate::{asyncfile, syncfile, Format, LogOption, CUTMODE, DEFAULT_FORMATTER, LEVEL, MODE};
 
 pub trait FileOption: Send + Sync {
     fn mode(&self) -> CUTMODE;
@@ -41,12 +38,7 @@ pub struct FileTimeMode {
 
 impl FileTimeMode {
     pub fn new(filename: &str, mode: MODE, maxbackups: u32, compress: bool) -> Self {
-        FileTimeMode {
-            filename: filename.to_string(),
-            mode,
-            max_backups: maxbackups,
-            compress,
-        }
+        FileTimeMode { filename: filename.to_string(), mode, max_backups: maxbackups, compress }
     }
 }
 
@@ -111,12 +103,7 @@ impl FileOption for FileSizeMode {
 
 impl FileSizeMode {
     pub fn new(filename: &str, maxsize: u64, maxbackups: u32, compress: bool) -> Self {
-        FileSizeMode {
-            filename: filename.to_string(),
-            max_size: maxsize,
-            max_backups: maxbackups,
-            compress,
-        }
+        FileSizeMode { filename: filename.to_string(), max_size: maxsize, max_backups: maxbackups, compress }
     }
 }
 
@@ -130,58 +117,22 @@ pub struct Handler {
     async_console: Option<Console>,
 }
 
-const DEFAULT_FORMATTER: &str = "{level}{time} {file}:{message}\n";
-
 impl Handler {
     pub fn new() -> Self {
         let f = Format::LevelFlag | Format::Date | Format::Time | Format::ShortFileName;
-        Handler {
-            level: LEVEL::Debug,
-            format: f,
-            console: true,
-            formatter: DEFAULT_FORMATTER.to_string(),
-            file_handler: None,
-            async_file_handler: None,
-            async_console: None,
-        }
+        Handler { level: LEVEL::Debug, format: f, console: true, formatter: DEFAULT_FORMATTER.to_string(), file_handler: None, async_file_handler: None, async_console: None }
     }
 
-    pub fn new_with_handler(
-        level: LEVEL,
-        format: u8,
-        console: bool,
-        fh: Box<syncfile::FileHandler>,
-    ) -> Self {
-        Handler {
-            level,
-            format,
-            console,
-            formatter: DEFAULT_FORMATTER.to_string(),
-            file_handler: Some(*fh),
-            async_file_handler: None,
-            async_console: None,
-        }
+    pub fn new_with_handler(level: LEVEL, format: u8, console: bool, fh: Box<syncfile::FileHandler>) -> Self {
+        Handler { level, format, console, formatter: DEFAULT_FORMATTER.to_string(), file_handler: Some(*fh), async_file_handler: None, async_console: None }
     }
 
-    pub fn new_with_asynchandler(
-        level: LEVEL,
-        format: u8,
-        console: bool,
-        fh: Box<asyncfile::FileHandler>,
-    ) -> Self {
-        Handler {
-            level,
-            format,
-            console,
-            formatter: DEFAULT_FORMATTER.to_string(),
-            file_handler: None,
-            async_file_handler: Some(*fh),
-            async_console: Some(Console::new()),
-        }
+    pub fn new_with_asynchandler(level: LEVEL, format: u8, console: bool, fh: Box<asyncfile::FileHandler>) -> Self {
+        Handler { level, format, console, formatter: DEFAULT_FORMATTER.to_string(), file_handler: None, async_file_handler: Some(*fh), async_console: Some(Console::new()) }
     }
 
-    pub fn print(&mut self, s: &str) -> io::Result<()> {
-        if self.is_console() {
+    pub fn print(&mut self, console: bool, s: &str) -> io::Result<()> {
+        if console {
             print!("{}", s);
         }
         if let Some(f) = self.file_handler.as_mut() {
@@ -190,8 +141,8 @@ impl Handler {
         Ok(())
     }
 
-    pub async fn async_print(&mut self, s: &str) -> io::Result<()> {
-        if self.is_console() {
+    pub async fn async_print(&mut self, console: bool, s: &str) -> io::Result<()> {
+        if console {
             if let Some(c) = self.async_console.as_mut() {
                 let _ = c.async_print(s).await;
             }
@@ -218,9 +169,9 @@ impl Handler {
         self.async_console = Some(Console::new());
     }
 
-    fn is_default_formatter(&self) -> bool {
-        self.formatter.eq(DEFAULT_FORMATTER)
-    }
+    // fn is_default_formatter(&self) -> bool {
+    //     self.formatter.eq(DEFAULT_FORMATTER)
+    // }
 
     /** LEVEL::Debug */
     pub fn set_level(&mut self, level: LEVEL) {
@@ -267,103 +218,99 @@ pub struct Handle {
 impl Handle {
     pub fn new(handler: Option<Handler>) -> Self {
         if handler.is_none() {
-            return Handle {
-                handler: Handler::new(),
-            };
+            return Handle { handler: Handler::new() };
         } else {
-            return Handle {
-                handler: handler.unwrap(),
-            };
+            return Handle { handler: handler.unwrap() };
         }
     }
 
-    pub fn print(&mut self, s: &str) -> io::Result<()> {
-        self.handler.print(s)
+    pub fn print(&mut self, console: bool, s: &str) -> io::Result<()> {
+        self.handler.print(console, s)
     }
 
-    pub async fn async_print(&mut self, s: &str) -> io::Result<()> {
-        self.handler.async_print(s).await
+    pub async fn async_print(&mut self, console: bool, s: &str) -> io::Result<()> {
+        self.handler.async_print(console, s).await
     }
 
     pub fn set_handler(&mut self, handler: Handler) {
         self.handler = handler;
     }
 
-    pub fn format(&mut self, level: LEVEL, filename: &str, line: u32, msg: String) -> String {
-        let fmat = self.handler.format;
+    // pub fn format(&self, level: LEVEL, filename: &str, line: u32, msg: String) -> String {
+    //     let fmat = self.handler.format;
 
-        if fmat == Format::Nano {
-            return msg;
-        }
+    //     if fmat == Format::Nano {
+    //         return msg;
+    //     }
 
-        let mut levelflag = "";
-        let mut time = String::new();
-        let mut file = String::new();
+    //     let mut levelflag = "";
+    //     let mut time = String::new();
+    //     let mut file = String::new();
 
-        if fmat & Format::LevelFlag != 0 {
-            levelflag = match level {
-                LEVEL::Trace => "[TRACE]",
-                LEVEL::Debug => "[DEBUG]",
-                LEVEL::Info => "[INFO]",
-                LEVEL::Warn => "[WARN]",
-                LEVEL::Error => "[ERROR]",
-                LEVEL::Fatal => "[FATAL]",
-                LEVEL::Off => "",
-            };
-        }
+    //     if fmat & Format::LevelFlag != 0 {
+    //         levelflag = match level {
+    //             LEVEL::Trace => "[TRACE]",
+    //             LEVEL::Debug => "[DEBUG]",
+    //             LEVEL::Info => "[INFO]",
+    //             LEVEL::Warn => "[WARN]",
+    //             LEVEL::Error => "[ERROR]",
+    //             LEVEL::Fatal => "[FATAL]",
+    //             LEVEL::Off => "",
+    //         };
+    //     }
 
-        if fmat & (Format::Date | Format::Time | Format::Microseconds) != 0 {
-            let ts = timenow();
-            if fmat & Format::Date != 0 {
-                time.push_str(ts[0].as_str());
-            }
-            if fmat & (Format::Time | Format::Microseconds) != 0 {
-                if !time.is_empty() {
-                    time.push(' ');
-                }
-                time.push_str(ts[1].as_str());
-                if fmat & Format::Microseconds != 0 {
-                    time.push_str(ts[2].as_str());
-                }
-            }
-        }
-        if fmat & (Format::LongFileName | Format::ShortFileName) != 0 {
-            let mut f = filename;
-            if fmat & Format::ShortFileName != 0 {
-                f = get_short_file_path(f)
-            }
-            file.push_str(f);
-            file.push(' ');
-            file.push_str(line.to_string().as_str());
-        }
+    //     if fmat & (Format::Date | Format::Time | Format::Microseconds) != 0 {
+    //         let ts = timenow();
+    //         if fmat & Format::Date != 0 {
+    //             time.push_str(ts[0].as_str());
+    //         }
+    //         if fmat & (Format::Time | Format::Microseconds) != 0 {
+    //             if !time.is_empty() {
+    //                 time.push(' ');
+    //             }
+    //             time.push_str(ts[1].as_str());
+    //             if fmat & Format::Microseconds != 0 {
+    //                 time.push_str(ts[2].as_str());
+    //             }
+    //         }
+    //     }
+    //     if fmat & (Format::LongFileName | Format::ShortFileName) != 0 {
+    //         let mut f = filename;
+    //         if fmat & Format::ShortFileName != 0 {
+    //             f = get_short_file_path(f)
+    //         }
+    //         file.push_str(f);
+    //         file.push(' ');
+    //         file.push_str(line.to_string().as_str());
+    //     }
 
-        if self.handler.is_default_formatter() {
-            let mut r = String::new();
-            if !levelflag.is_empty() {
-                r.push_str(&levelflag);
-                r.push(' ');
-            }
-            if !time.is_empty() {
-                r.push_str(&time);
-                r.push(' ');
-            }
-            if !file.is_empty() {
-                r.push_str(&file);
-                r.push(':');
-            }
-            r.push_str(&msg);
-            r.push('\n');
-            return r;
-        } else {
-            return parse_and_format_log(
-                &self.handler.formatter,
-                &levelflag,
-                time.as_str(),
-                file.as_str(),
-                msg.as_str(),
-            );
-        }
-    }
+    //     if self.handler.is_default_formatter() {
+    //         let mut r = String::new();
+    //         if !levelflag.is_empty() {
+    //             r.push_str(&levelflag);
+    //             r.push(' ');
+    //         }
+    //         if !time.is_empty() {
+    //             r.push_str(&time);
+    //             r.push(' ');
+    //         }
+    //         if !file.is_empty() {
+    //             r.push_str(&file);
+    //             r.push(':');
+    //         }
+    //         r.push_str(&msg);
+    //         r.push('\n');
+    //         return r;
+    //     } else {
+    //         return parse_and_format_log(
+    //             &self.handler.formatter,
+    //             &levelflag,
+    //             time.as_str(),
+    //             file.as_str(),
+    //             msg.as_str(),
+    //         );
+    //     }
+    // }
 
     pub fn is_file_line(&self) -> bool {
         self.handler.format & (Format::LongFileName | Format::ShortFileName) != 0
@@ -394,8 +341,8 @@ impl Handle {
         self.handler.set_format(format);
     }
 
-    pub fn get_formatter(&self) -> String {
-        return self.handler.formatter.clone();
+    pub fn get_formatter(&self) -> &str {
+        return self.handler.formatter.as_str();
     }
 
     /** default: "{level}{time} {file}:{message}\n" */
