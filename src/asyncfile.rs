@@ -29,10 +29,7 @@ use tokio::{
     io::{self, AsyncWriteExt},
 };
 
-use crate::{
-    async_gzip, getbackup_with_time, handle::FileOption, passtimemode, timesec, ErrCode, CUTMODE,
-    MODE,
-};
+use crate::{async_gzip, getbackup_with_time, handle::FileOption, passtimemode, timesec, ErrCode, CUTMODE, MODE};
 
 pub struct FileHandler {
     filename: String, //Log file path
@@ -48,7 +45,7 @@ pub struct FileHandler {
 
 impl FileHandler {
     pub async fn new(option: Box<dyn FileOption>) -> io::Result<FileHandler> {
-        let fo = &*option;
+        let fo = option;
         let filename = fo.filename();
         let log_path = Path::new(&filename);
         let _ = mkdirs(log_path).await;
@@ -92,25 +89,13 @@ impl FileHandler {
     }
 
     async fn newfile(filename: String) -> io::Result<tokio::fs::File> {
-        OpenOptions::new()
-            .append(true)
-            .create(true)
-            .open(filename)
-            .await
+        OpenOptions::new().append(true).create(true).open(filename).await
     }
 
     async fn rename(&self) -> io::Result<()> {
         let log_path = Path::new(&self.filename);
         match self.cutmode {
-            CUTMODE::TIME => {
-                rename(
-                    &log_path,
-                    self.compress,
-                    self.max_backups,
-                    Some(getbackup_with_time(self.startsec, self.timemode)),
-                )
-                .await
-            }
+            CUTMODE::TIME => rename(&log_path, self.compress, self.max_backups, Some(getbackup_with_time(self.startsec, self.timemode))).await,
             CUTMODE::SIZE => rename(&log_path, self.compress, self.max_backups, None).await,
         }
     }
@@ -143,33 +128,20 @@ impl FileHandler {
 }
 
 async fn mkdirs(dir_path: &Path) -> io::Result<()> {
-    let parent_dir = dir_path
-        .parent()
-        .ok_or_else(|| Error::new(ErrorKind::Other, ErrCode::NotFound.to_string()))?;
+    let parent_dir = dir_path.parent().ok_or_else(|| Error::new(ErrorKind::Other, ErrCode::NotFound.to_string()))?;
     if !parent_dir.exists() {
         let _ = fs::create_dir_all(parent_dir).await;
     }
     Ok(())
 }
 
-async fn rename(
-    log_path: &Path,
-    compress: bool,
-    maxbackup: u32,
-    backupsuffix: Option<String>,
-) -> io::Result<()> {
+async fn rename(log_path: &Path, compress: bool, maxbackup: u32, backupsuffix: Option<String>) -> io::Result<()> {
     let mut counter = 1;
     let file_stem = log_path.file_stem().unwrap_or_else(|| OsStr::new("tklog"));
-    let extension = log_path
-        .extension()
-        .map_or("", |e| e.to_str().unwrap())
-        .to_owned();
+    let extension = log_path.extension().map_or("", |e| e.to_str().unwrap()).to_owned();
     let mut maxloop = 1 << 20;
     while maxloop > 0 {
-        let mut parent = log_path
-            .parent()
-            .ok_or_else(|| Error::new(ErrorKind::Other, ErrCode::NotFound.to_string()))?
-            .to_path_buf();
+        let mut parent = log_path.parent().ok_or_else(|| Error::new(ErrorKind::Other, ErrCode::NotFound.to_string()))?.to_path_buf();
 
         if parent.as_os_str().is_empty() {
             if let Ok(current_dir) = env::current_dir() {
@@ -187,13 +159,7 @@ async fn rename(
         let new_name: String;
 
         if backupsuffix.is_some() {
-            new_name = format!(
-                "{}_{}_{}{}",
-                file_stem.to_string_lossy(),
-                backupsuffix.as_ref().unwrap(),
-                counter,
-                suffix
-            );
+            new_name = format!("{}_{}_{}{}", file_stem.to_string_lossy(), backupsuffix.as_ref().unwrap(), counter, suffix);
         } else {
             new_name = format!("{}_{}{}", file_stem.to_string_lossy(), counter, suffix);
         }
@@ -223,12 +189,7 @@ async fn rename(
     Ok(())
 }
 
-async fn filter_files(
-    dir_path: &Path,
-    extension: String,
-    filename: String,
-    maxbackup: u32,
-) -> io::Result<Vec<PathBuf>> {
+async fn filter_files(dir_path: &Path, extension: String, filename: String, maxbackup: u32) -> io::Result<Vec<PathBuf>> {
     let mut files = Vec::new();
     let mut sortvec = Vec::new();
     let mut entries = fs::read_dir(dir_path).await?;
@@ -238,11 +199,7 @@ async fn filter_files(
             continue;
         }
         let md = entry.metadata().await?;
-        let sec = md
-            .modified()?
-            .duration_since(std::time::UNIX_EPOCH)
-            .expect("")
-            .as_secs();
+        let sec = md.modified()?.duration_since(std::time::UNIX_EPOCH).expect("").as_secs();
 
         if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
             let mut suffix = String::new();
@@ -250,10 +207,7 @@ async fn filter_files(
                 suffix.push_str("\\.");
                 suffix.push_str(extension.as_str());
             }
-            let parrent = format!(
-                "{}{}{}{}{}{}",
-                "^", filename, "(_\\d+){0,}", "_\\d+", suffix, "(\\.gz){0,}$"
-            );
+            let parrent = format!("{}{}{}{}{}{}", "^", filename, "(_\\d+){0,}", "_\\d+", suffix, "(\\.gz){0,}$");
             let re = Regex::new(parrent.as_str()).unwrap();
             if re.is_match(file_name) {
                 sortvec.push((sec, path.clone()))
@@ -275,12 +229,7 @@ async fn delete_files(files: Vec<PathBuf>) -> io::Result<()> {
     })
 }
 
-async fn maxbackup_with_size(
-    parant: &PathBuf,
-    extension: String,
-    filename: String,
-    maxbackup: u32,
-) -> io::Result<()> {
+async fn maxbackup_with_size(parant: &PathBuf, extension: String, filename: String, maxbackup: u32) -> io::Result<()> {
     let matched_files = filter_files(parant, extension, filename, maxbackup).await?;
     delete_files(matched_files).await
 }
