@@ -19,7 +19,14 @@
 
 ## 使用方法简述
 
-最简单常用的方法：**直接调用**
+##### Use tklog
+
+```rust
+[dependencies]
+tklog = "0.0.9"   #   "0.0.x" current version
+```
+
+最简单常用的方式：**直接调用**
 
 ```rust
 use tklog::{trace,debug, error, fatal, info,warn};
@@ -416,7 +423,8 @@ fn testmod2() {
 }
 ```
 ##### 执行结果
-```text
+
+```rust
 [DEBUG] 2024-06-19 10:54:07 testlog.rs 54:module1,tklog api,LOG debug log>>,123
 [INFO] 2024-06-19 10:54:07 testlog.rs 55:module1,tklog api,LOG info log>>,456
 [DEBUG] 2024-06-19 10:54:07 testlog.rs 56:module1,log api,debug log>>111
@@ -462,7 +470,7 @@ async fn testmod4() {
 
 ##### 执行结果：
 
-```text
+```rust
 [DEBUG] 2024-06-19 10:59:26 testlog.rs 85:async module3,tklog api,LOG debug log>>,123
 [INFO] 2024-06-19 10:59:26 testlog.rs 86:async module3,tklog api,LOG info log>>,456
 [DEBUG] 2024-06-19 10:59:26 testlog.rs 87:async module3,log api,debug log>>333
@@ -477,85 +485,144 @@ async fn testmod4() {
 ## tklog 支持自定义多实例格式化  format!与 异步format!
 
 ##### 示例：
+```rust
+#[test]
+fn testformats() {
+    let mut log = Logger::new();
+    log.set_console(true)
+        .set_level(LEVEL::Debug)
+        .set_cutmode_by_time("tklogs.log", MODE::DAY, 10, true);
+    let mut logger = Arc::clone(&Arc::new(Mutex::new(log)));
+    let log = logger.borrow_mut();
 
-	#[test]
-	fn testformats() {
-		let mut log = Logger::new();
-		log.set_console(true)
-			.set_level(LEVEL::Debug)
-			.set_cutmode_by_time("tklogs.log", MODE::DAY, 10, true);
-		let mut logger = Arc::clone(&Arc::new(Mutex::new(log)));
-		let log = logger.borrow_mut();
+    let v = vec![1, 2, 3];
+    tklog::formats!(log, LEVEL::Debug, "Debug>>>{},{}>>>{:?}", 1, 2, v);
 
-		let v = vec![1, 2, 3];
-		tklog::formats!(log, LEVEL::Debug, "Debug>>>{},{}>>>{:?}", 1, 2, v);
+    let v2 = vec!['a', 'b'];
+    tklog::formats!(log, LEVEL::Info, "Info>>>{},{}>>{:?}", 1, 2, v2);
+    tklog::formats!(log, LEVEL::Warn, "Warn>>>{},{}", 1, 2);
+    tklog::formats!(log, LEVEL::Error, "Error>>>{},{}", 1, 2);
+    tklog::formats!(log, LEVEL::Fatal, "Fatal>>>{},{}", 1, 2);
 
-		let v2 = vec!['a', 'b'];
-		tklog::formats!(log, LEVEL::Info, "Info>>>{},{}>>{:?}", 1, 2, v2);
-		tklog::formats!(log, LEVEL::Warn, "Warn>>>{},{}", 1, 2);
-		tklog::formats!(log, LEVEL::Error, "Error>>>{},{}", 1, 2);
-		tklog::formats!(log, LEVEL::Fatal, "Fatal>>>{},{}", 1, 2);
-
-		thread::sleep(Duration::from_secs(1))
-	}
+    thread::sleep(Duration::from_secs(1))
+}
+```
 
 ##### 执行结果
 
-	[DEBUG] 2024-06-06 15:54:07 testsynclog.rs 80:Debug>>>1,2>>>[1, 2, 3]
-	[INFO] 2024-06-06 15:54:07 testsynclog.rs 83:Info>>>1,2>>['a', 'b']
-	[WARN] 2024-06-06 15:54:07 testsynclog.rs 84:Warn>>>1,2
-	[ERROR] 2024-06-06 15:54:07 testsynclog.rs 85:Error>>>1,2
-	[FATAL] 2024-06-06 15:54:07 testsynclog.rs 86:Fatal>>>1,2
-
+```rust
+[DEBUG] 2024-06-06 15:54:07 testsynclog.rs 80:Debug>>>1,2>>>[1, 2, 3]
+[INFO] 2024-06-06 15:54:07 testsynclog.rs 83:Info>>>1,2>>['a', 'b']
+[WARN] 2024-06-06 15:54:07 testsynclog.rs 84:Warn>>>1,2
+[ERROR] 2024-06-06 15:54:07 testsynclog.rs 85:Error>>>1,2
+[FATAL] 2024-06-06 15:54:07 testsynclog.rs 86:Fatal>>>1,2
+```
 
 ##### 异步 formats示例
 
-	#[tokio::test]
-	async fn testformats() {
-		let mut log = tklog::Async::Logger::new();
-		log.set_console(true)
-			.set_level(LEVEL::Debug)
-			.set_cutmode_by_time("tklogasyncs.log", MODE::DAY, 10, true)
-			.await;
-		let mut logger = Arc::clone(&Arc::new(Mutex::new(log)));
-		let log = logger.borrow_mut();
+```rust
+#[tokio::test]
+async fn testformats() {
+    let mut log = tklog::Async::Logger::new();
+    log.set_console(true)
+        .set_level(LEVEL::Debug)
+        .set_cutmode_by_time("tklogasyncs.log", MODE::DAY, 10, true)
+        .await;
+    let mut logger = Arc::clone(&Arc::new(Mutex::new(log)));
+    let log = logger.borrow_mut();
 
-		let v = vec![1, 2, 3];
-		tklog::async_formats!(log, LEVEL::Debug, "Debug>>>{},{}>>>{:?}", 1, 2, v);
+    let v = vec![1, 2, 3];
+    tklog::async_formats!(log, LEVEL::Debug, "Debug>>>{},{}>>>{:?}", 1, 2, v);
 
-		let v2 = vec!['a', 'b'];
-		tklog::async_formats!(log, LEVEL::Info, "Info>>>{},{}>>{:?}", 1, 2, v2);
-		tklog::async_formats!(log, LEVEL::Warn, "Warn>>>{},{}", 1, 2);
-		tklog::async_formats!(log, LEVEL::Error, "Error>>>{},{}", 1, 2);
-		tklog::async_formats!(log, LEVEL::Fatal, "Fatal>>>{},{}", 1, 2);
+    let v2 = vec!['a', 'b'];
+    tklog::async_formats!(log, LEVEL::Info, "Info>>>{},{}>>{:?}", 1, 2, v2);
+    tklog::async_formats!(log, LEVEL::Warn, "Warn>>>{},{}", 1, 2);
+    tklog::async_formats!(log, LEVEL::Error, "Error>>>{},{}", 1, 2);
+    tklog::async_formats!(log, LEVEL::Fatal, "Fatal>>>{},{}", 1, 2);
 
-		tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-	}
+    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+}
+```
 
 ###### 执行结果
 
-	[DEBUG] 2024-06-06 16:09:26 testasynclog.rs 61:Debug>>>1,2>>>[1, 2, 3]
-	[INFO] 2024-06-06 16:09:26 testasynclog.rs 64:Info>>>1,2>>['a', 'b']
-	[WARN] 2024-06-06 16:09:26 testasynclog.rs 65:Warn>>>1,2
-	[ERROR] 2024-06-06 16:09:26 testasynclog.rs 66:Error>>>1,2
-	[FATAL] 2024-06-06 16:09:26 testasynclog.rs 67:Fatal>>>1,2
+```rust
+[DEBUG] 2024-06-06 16:09:26 testasynclog.rs 61:Debug>>>1,2>>>[1, 2, 3]
+[INFO] 2024-06-06 16:09:26 testasynclog.rs 64:Info>>>1,2>>['a', 'b']
+[WARN] 2024-06-06 16:09:26 testasynclog.rs 65:Warn>>>1,2
+[ERROR] 2024-06-06 16:09:26 testasynclog.rs 66:Error>>>1,2
+[FATAL] 2024-06-06 16:09:26 testasynclog.rs 67:Fatal>>>1,2
+```
+
+------
+
+## tklog 支持自定义日志处理函数
+
+###### tklog 通过 `set_custom_handler()` 添加外部自定义函数，控制日志处理的流程与逻辑
+
+##### 示例
+
+```rust
+#[test]
+fn test_custom() {
+    fn custom_handler(lc: &LogContext) -> bool {
+        println!("level >>>>>>>>>>>>>>>>>{:?}", lc.level);
+        println!("message >>>>>>>>>>>>>>>>>{:?}", lc.log_body);
+        println!("filename >>>>>>>>>>>>>>>>>{:?}", lc.filename);
+        println!("line >>>>>>>>>>>>>>>>>{:?}", lc.line);
+        println!("modname >>>>>>>>>>>>>>>>>{:?}", lc.modname);
+        if lc.level == LEVEL::Debug {
+            println!("{}", "debug now");
+            return false;
+        }
+        true
+    }
+
+    LOG.set_custom_handler(custom_handler);
+    debug!("000000000000000000");
+    info!("1111111111111111111");
+    thread::sleep(Duration::from_secs(1))
+}
+```
+
+###### 执行结果
+
+```rust
+---- test_custom stdout ----
+level >>>>>>>>>>>>>>>>>Debug
+message >>>>>>>>>>>>>>>>>"000000000000000000"
+filename >>>>>>>>>>>>>>>>>"tests\\testsynclog.rs"
+line >>>>>>>>>>>>>>>>>143
+modname >>>>>>>>>>>>>>>>>"testsynclog"
+debug now
+level >>>>>>>>>>>>>>>>>Info
+message >>>>>>>>>>>>>>>>>"1111111111111111111"
+filename >>>>>>>>>>>>>>>>>"tests\\testsynclog.rs"
+line >>>>>>>>>>>>>>>>>144
+modname >>>>>>>>>>>>>>>>>"testsynclog"
+[INFO] 2024-08-05 15:39:07 testsynclog.rs 144:1111111111111111111
+```
+
+###### 说明：
+当 fn custom_handler(lc: &LogContext) -> bool  返回true时，tklog调用custom_handler执行自定义函数后，继续执行tklog的打印流程。当返回false时，tklog不再执行tklog的打印程序。直接返回。如示例中所示，当年日志级别为Debug时，返回false，所以，tklog的Debug日志，不再打印出来。
 
 ------------
 
-### tklog 基准压力测试
+## tklog 基准压力测试
 
 ```text
 log_benchmark           time:   [2.9703 µs 2.9977 µs 3.0256 µs]
-                        	change: [-95.539% -95.413% -95.268%] (p = 0.00 < 0.05)
-                        	Performance has improved.
+                        change: [-95.539% -95.413% -95.268%] (p = 0.00 < 0.05)
+                        Performance has improved.
 Found 9 outliers among 100 measurements (9.00%)
   4 (4.00%) high mild
   5 (5.00%) high severe
 ```
+
 ```text
 log_benchmark           time:   [2.9685 µs 3.0198 µs 3.0678 µs]
-                        	change: [-3.6839% -1.2170% +1.0120%] (p = 0.34 > 0.05)
-                        	No change in performance detected.
+                        change: [-3.6839% -1.2170% +1.0120%] (p = 0.34 > 0.05)
+                        No change in performance detected.
 Found 7 outliers among 100 measurements (7.00%)
   7 (7.00%) high mild
 ```
@@ -563,16 +630,17 @@ Found 7 outliers among 100 measurements (7.00%)
 
 ```text
 test_debug              time:   [3.3747 µs 3.4599 µs 3.5367 µs]
-                               change: [-69.185% -68.009% -66.664%] (p = 0.00 < 0.05)
-                               Performance has improved.
+                        change: [-69.185% -68.009% -66.664%] (p = 0.00 < 0.05)
+                        Performance has improved.
 Found 9 outliers among 100 measurements (9.00%)
   6 (6.00%) high mild
   3 (3.00%) high severe
 ```
+
 ```rust
 test_debug              time:   [3.8377 µs 3.8881 µs 3.9408 µs]
-                                change: [-66.044% -65.200% -64.363%] (p = 0.00 < 0.05)
-                                Performance has improved.
+                        change: [-66.044% -65.200% -64.363%] (p = 0.00 < 0.05)
+                        Performance has improved.
 Found 2 outliers among 100 measurements (2.00%)
   2 (2.00%) high mild
 ```
