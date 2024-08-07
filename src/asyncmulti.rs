@@ -84,7 +84,9 @@ macro_rules! async_formats {
                     line = line!();
                 }
                 let ss = logger.fmt(module,$level, file, line, format!($($arg),*));
-                logger.print(module,ss.as_str()).await;
+                if !ss.is_empty(){
+                    logger.print(module,ss.as_str()).await;
+                }
             }
         }
     };
@@ -108,7 +110,9 @@ macro_rules! async_logs_common {
                 }
                 let msg: String = formatted_args.join(",");
                 let ss = logger.fmt(module,$level, file, line, msg);
-                logger.print(module,ss.as_str()).await;
+                if !ss.is_empty(){
+                    logger.print(module,ss.as_str()).await;
+                }
             }
         }
     };
