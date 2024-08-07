@@ -1,6 +1,6 @@
 [package]
 name = "tklog"
-version = "0.0.7"
+version = "0.0.9"
 edition = "2021"
 authors = ["donnie4w <donnie4w@gmail.com>"]
 description = "Lightweight and efficient rust structured log library with support for log level, file shred, compressed archive"
@@ -8,10 +8,9 @@ homepage = "https://github.com/donnie4w/tklog"
 documentation = "https://docs.rs/tklog" 
 readme = "README.md"
 keywords = ["log",  "logger","logging"]
-categories = ["logging"] 
+categories = ["development-tools::debugging"]
 license = "Apache-2.0"
 repository = "https://github.com/donnie4w/tklog"
-
 
 include = [
     "src/**/*.rs",
