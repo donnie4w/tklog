@@ -19,6 +19,13 @@
 
 ## Simple Usage Description
 
+##### Use tklog
+
+```rust
+[dependencies]
+tklog = "0.0.9"   #   "0.0.x" current version
+```
+
 The simplest way to use tklog involves direct macro calls:
 
 ```rust
@@ -500,84 +507,146 @@ async fn testmod4() {
 
 ###### Example：
 
-	#[test]
-	fn testformats() {
-		let mut log = Logger::new();
-		log.set_console(true)
-			.set_level(LEVEL::Debug)
-			.set_cutmode_by_time("tklogs.log", MODE::DAY, 10, true);
-		let mut logger = Arc::clone(&Arc::new(Mutex::new(log)));
-		let log = logger.borrow_mut();
+```rust
+#[test]
+fn testformats() {
+    let mut log = Logger::new();
+    log.set_console(true)
+        .set_level(LEVEL::Debug)
+        .set_cutmode_by_time("tklogs.log", MODE::DAY, 10, true);
+    let mut logger = Arc::clone(&Arc::new(Mutex::new(log)));
+    let log = logger.borrow_mut();
 
-		let v = vec![1, 2, 3];
-		tklog::formats!(log, LEVEL::Debug, "Debug>>>{},{}>>>{:?}", 1, 2, v);
+    let v = vec![1, 2, 3];
+    tklog::formats!(log, LEVEL::Debug, "Debug>>>{},{}>>>{:?}", 1, 2, v);
 
-		let v2 = vec!['a', 'b'];
-		tklog::formats!(log, LEVEL::Info, "Info>>>{},{}>>{:?}", 1, 2, v2);
-		tklog::formats!(log, LEVEL::Warn, "Warn>>>{},{}", 1, 2);
-		tklog::formats!(log, LEVEL::Error, "Error>>>{},{}", 1, 2);
-		tklog::formats!(log, LEVEL::Fatal, "Fatal>>>{},{}", 1, 2);
+    let v2 = vec!['a', 'b'];
+    tklog::formats!(log, LEVEL::Info, "Info>>>{},{}>>{:?}", 1, 2, v2);
+    tklog::formats!(log, LEVEL::Warn, "Warn>>>{},{}", 1, 2);
+    tklog::formats!(log, LEVEL::Error, "Error>>>{},{}", 1, 2);
+    tklog::formats!(log, LEVEL::Fatal, "Fatal>>>{},{}", 1, 2);
 
-		thread::sleep(Duration::from_secs(1))
-	}
+    thread::sleep(Duration::from_secs(1))
+}
+```
 
 ###### Execution Result:
 
-	[DEBUG] 2024-06-06 15:54:07 testsynclog.rs 80:Debug>>>1,2>>>[1, 2, 3]
-	[INFO] 2024-06-06 15:54:07 testsynclog.rs 83:Info>>>1,2>>['a', 'b']
-	[WARN] 2024-06-06 15:54:07 testsynclog.rs 84:Warn>>>1,2
-	[ERROR] 2024-06-06 15:54:07 testsynclog.rs 85:Error>>>1,2
-	[FATAL] 2024-06-06 15:54:07 testsynclog.rs 86:Fatal>>>1,2
-
+```rust
+[DEBUG] 2024-06-06 15:54:07 testsynclog.rs 80:Debug>>>1,2>>>[1, 2, 3]
+[INFO] 2024-06-06 15:54:07 testsynclog.rs 83:Info>>>1,2>>['a', 'b']
+[WARN] 2024-06-06 15:54:07 testsynclog.rs 84:Warn>>>1,2
+[ERROR] 2024-06-06 15:54:07 testsynclog.rs 85:Error>>>1,2
+[FATAL] 2024-06-06 15:54:07 testsynclog.rs 86:Fatal>>>1,2
+```
 
 ###### asynchronous Example
 
-	#[tokio::test]
-	async fn testformats() {
-		let mut log = tklog::Async::Logger::new();
-		log.set_console(true)
-			.set_level(LEVEL::Debug)
-			.set_cutmode_by_time("tklogasyncs.log", MODE::DAY, 10, true)
-			.await;
-		let mut logger = Arc::clone(&Arc::new(Mutex::new(log)));
-		let log = logger.borrow_mut();
+```rust
+#[tokio::test]
+async fn testformats() {
+    let mut log = tklog::Async::Logger::new();
+    log.set_console(true)
+        .set_level(LEVEL::Debug)
+        .set_cutmode_by_time("tklogasyncs.log", MODE::DAY, 10, true)
+        .await;
+    let mut logger = Arc::clone(&Arc::new(Mutex::new(log)));
+    let log = logger.borrow_mut();
 
-		let v = vec![1, 2, 3];
-		tklog::async_formats!(log, LEVEL::Debug, "Debug>>>{},{}>>>{:?}", 1, 2, v);
+    let v = vec![1, 2, 3];
+    tklog::async_formats!(log, LEVEL::Debug, "Debug>>>{},{}>>>{:?}", 1, 2, v);
 
-		let v2 = vec!['a', 'b'];
-		tklog::async_formats!(log, LEVEL::Info, "Info>>>{},{}>>{:?}", 1, 2, v2);
-		tklog::async_formats!(log, LEVEL::Warn, "Warn>>>{},{}", 1, 2);
-		tklog::async_formats!(log, LEVEL::Error, "Error>>>{},{}", 1, 2);
-		tklog::async_formats!(log, LEVEL::Fatal, "Fatal>>>{},{}", 1, 2);
+    let v2 = vec!['a', 'b'];
+    tklog::async_formats!(log, LEVEL::Info, "Info>>>{},{}>>{:?}", 1, 2, v2);
+    tklog::async_formats!(log, LEVEL::Warn, "Warn>>>{},{}", 1, 2);
+    tklog::async_formats!(log, LEVEL::Error, "Error>>>{},{}", 1, 2);
+    tklog::async_formats!(log, LEVEL::Fatal, "Fatal>>>{},{}", 1, 2);
 
-		tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-	}
+    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+}
+```
 
 ###### Execution Result:
 
-	[DEBUG] 2024-06-06 16:09:26 testasynclog.rs 61:Debug>>>1,2>>>[1, 2, 3]
-	[INFO] 2024-06-06 16:09:26 testasynclog.rs 64:Info>>>1,2>>['a', 'b']
-	[WARN] 2024-06-06 16:09:26 testasynclog.rs 65:Warn>>>1,2
-	[ERROR] 2024-06-06 16:09:26 testasynclog.rs 66:Error>>>1,2
-	[FATAL] 2024-06-06 16:09:26 testasynclog.rs 67:Fatal>>>1,2
+```rust
+[DEBUG] 2024-06-06 16:09:26 testasynclog.rs 61:Debug>>>1,2>>>[1, 2, 3]
+[INFO] 2024-06-06 16:09:26 testasynclog.rs 64:Info>>>1,2>>['a', 'b']
+[WARN] 2024-06-06 16:09:26 testasynclog.rs 65:Warn>>>1,2
+[ERROR] 2024-06-06 16:09:26 testasynclog.rs 66:Error>>>1,2
+[FATAL] 2024-06-06 16:09:26 testasynclog.rs 67:Fatal>>>1,2
+```
+
+------
+
+## tklog supports custom log processing functions.
+
+###### tklog allows the addition of external custom functions through `set_custom_handler()`, enabling control over the log processing flow and logic.
+
+###### Example
+
+```rust
+#[test]
+fn test_custom() {
+    fn custom_handler(lc: &LogContext) -> bool {
+        println!("level >>>>>>>>>>>>>>>>>{:?}", lc.level);
+        println!("message >>>>>>>>>>>>>>>>>{:?}", lc.log_body);
+        println!("filename >>>>>>>>>>>>>>>>>{:?}", lc.filename);
+        println!("line >>>>>>>>>>>>>>>>>{:?}", lc.line);
+        println!("modname >>>>>>>>>>>>>>>>>{:?}", lc.modname);
+        if lc.level == LEVEL::Debug {
+            println!("{}", "debug now");
+            return false;
+        }
+        true
+    }
+
+    LOG.set_custom_handler(custom_handler);
+    debug!("000000000000000000");
+    info!("1111111111111111111");
+    thread::sleep(Duration::from_secs(1))
+}
+```
+
+###### Execution Result
+
+```rust
+---- test_custom stdout ----
+level >>>>>>>>>>>>>>>>>Debug
+message >>>>>>>>>>>>>>>>>"000000000000000000"
+filename >>>>>>>>>>>>>>>>>"tests\\testsynclog.rs"
+line >>>>>>>>>>>>>>>>>143
+modname >>>>>>>>>>>>>>>>>"testsynclog"
+debug now
+level >>>>>>>>>>>>>>>>>Info
+message >>>>>>>>>>>>>>>>>"1111111111111111111"
+filename >>>>>>>>>>>>>>>>>"tests\\testsynclog.rs"
+line >>>>>>>>>>>>>>>>>144
+modname >>>>>>>>>>>>>>>>>"testsynclog"
+[INFO] 2024-08-05 15:39:07 testsynclog.rs 144:1111111111111111111
+```
+
+##### Explanation
+
+When the function `fn custom_handler(lc: &LogContext) -> bool` returns `true`, **tklog** calls the `custom_handler` to execute the custom function and then continues with **tklog**'s logging process. When it returns `false`, **tklog** does not proceed with its logging process and directly returns. As shown in the example, when the log level is `Debug`, it returns `false`, so **tklog** does not print the `Debug` log.
+
+
 
 ------------
 
-### Benchmark Test
+## Benchmark Test
 
 ```text
 log_benchmark           time:   [2.9703 µs 2.9977 µs 3.0256 µs]
-                        	change: [-95.539% -95.413% -95.268%] (p = 0.00 < 0.05)
-                        	Performance has improved.
+                        change: [-95.539% -95.413% -95.268%] (p = 0.00 < 0.05)
+                        Performance has improved.
 Found 9 outliers among 100 measurements (9.00%)
   4 (4.00%) high mild
   5 (5.00%) high severe
 ```
 ```text
 log_benchmark           time:   [2.9685 µs 3.0198 µs 3.0678 µs]
-                        	change: [-3.6839% -1.2170% +1.0120%] (p = 0.34 > 0.05)
-                        	No change in performance detected.
+                        change: [-3.6839% -1.2170% +1.0120%] (p = 0.34 > 0.05)
+                        No change in performance detected.
 Found 7 outliers among 100 measurements (7.00%)
   7 (7.00%) high mild
 ```
@@ -585,16 +654,16 @@ Found 7 outliers among 100 measurements (7.00%)
 
 ```text
 test_debug              time:   [3.3747 µs 3.4599 µs 3.5367 µs]
-                               change: [-69.185% -68.009% -66.664%] (p = 0.00 < 0.05)
-                               Performance has improved.
+                        change: [-69.185% -68.009% -66.664%] (p = 0.00 < 0.05)
+                        Performance has improved.
 Found 9 outliers among 100 measurements (9.00%)
   6 (6.00%) high mild
   3 (3.00%) high severe
 ```
 ```rust
 test_debug              time:   [3.8377 µs 3.8881 µs 3.9408 µs]
-                                change: [-66.044% -65.200% -64.363%] (p = 0.00 < 0.05)
-                                Performance has improved.
+                        change: [-66.044% -65.200% -64.363%] (p = 0.00 < 0.05)
+                        Performance has improved.
 Found 2 outliers among 100 measurements (2.00%)
   2 (2.00%) high mild
 ```
