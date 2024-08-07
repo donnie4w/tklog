@@ -1,6 +1,6 @@
 use std::{thread, time::Duration};
 
-use tklog::{Format, ASYNC_LOG, LEVEL, LOG};
+use tklog::{handle::FileTimeMode, Format, LogOption, ASYNC_LOG, LEVEL, LOG};
 
 #[test]
 fn log_syncinit() {
@@ -48,9 +48,20 @@ async fn testasynclog() {
 
 mod module1 {
     use std::{thread, time::Duration};
-    use tklog::{handle::FileTimeMode, LogOption, LEVEL};
+    use tklog::{handle::FileTimeMode, Format, LogOption, LEVEL};
     pub fn testmod() {
-        tklog::LOG.set_mod_option("testlog::module1", LogOption { level: Some(LEVEL::Debug), format: None, formatter: None, console: None, fileoption: Some(Box::new(FileTimeMode::new("module1.log", tklog::MODE::DAY, 0, true))) }).uselog();
+        tklog::LOG
+            .set_mod_option(
+                "testlog::module1",
+                LogOption {
+                    level: Some(LEVEL::Debug),
+                    format: Some(Format::Time | Format::Date | Format::ShortFileName),
+                    formatter: None,
+                    console: Some(true),
+                    fileoption: Some(Box::new(FileTimeMode::new("module1.log", tklog::MODE::DAY, 0, true))),
+                },
+            )
+            .uselog();
         tklog::debug!("module1,tklog api,LOG debug log>>", 123);
         tklog::info!("module1,tklog api,LOG info log>>", 456);
         log::debug!("module1,log api,debug log>>{}", 111);
@@ -61,9 +72,9 @@ mod module1 {
 
 mod module2 {
     use std::{thread, time::Duration};
-    use tklog::{handle::FileTimeMode, LogOption, LEVEL};
+    use tklog::{LogOption, LEVEL};
     pub fn testmod() {
-        tklog::LOG.set_mod_option("testlog::module2", LogOption { level: Some(LEVEL::Info), format: None, formatter: None, console: None, fileoption: Some(Box::new(FileTimeMode::new("module2.log", tklog::MODE::DAY, 0, true))) }).uselog();
+        tklog::LOG.set_mod_option("testlog::module2", LogOption { level: Some(LEVEL::Info), format: None, formatter: None, console: None, fileoption: None }).uselog();
         tklog::debug!("module2,tklog api,LOG debug log>>", 123);
         tklog::info!("module2,tklog api,LOG info log>>", 456);
         log::debug!("module2,log api,debug log>>{}", 111);
@@ -73,7 +84,8 @@ mod module2 {
 }
 
 #[test]
-fn testmod2() {
+fn testmod() {
+    tklog::LOG.set_option(LogOption { level: Some(LEVEL::Debug), format: None, formatter: None, console: Some(false), fileoption: Some(Box::new(FileTimeMode::new("module.log", tklog::MODE::DAY, 0, true))) });
     module1::testmod();
     module2::testmod();
 }
@@ -81,7 +93,19 @@ fn testmod2() {
 mod module3 {
     use tklog::{handle::FileTimeMode, Format, LogOption, LEVEL};
     pub async fn testmod() {
-        tklog::ASYNC_LOG.set_mod_option("testlog::module3", LogOption { level: Some(LEVEL::Debug), format: Some(Format::Date), formatter: None, console: None, fileoption: Some(Box::new(FileTimeMode::new("module3.log", tklog::MODE::DAY, 0, true))) }).await.uselog();
+        tklog::ASYNC_LOG
+            .set_mod_option(
+                "testlog::module3",
+                LogOption {
+                    level: Some(LEVEL::Debug),
+                    format: Some(Format::Date | Format::Time),
+                    formatter: None,
+                    console: Some(true),
+                    fileoption: Some(Box::new(FileTimeMode::new("module3.log", tklog::MODE::DAY, 0, true))),
+                },
+            )
+            .await
+            .uselog();
         tklog::async_debug!("async module3,tklog api,LOG debug log>>", 123);
         tklog::async_info!("async module3,tklog api,LOG info log>>", 456);
         log::debug!("async module3,log api,debug log>>{}", 333);
@@ -91,9 +115,9 @@ mod module3 {
 }
 
 mod module4 {
-    use tklog::{handle::FileTimeMode, Format, LogOption, LEVEL};
+    use tklog::{handle::FileTimeMode, LogOption, LEVEL};
     pub async fn testmod() {
-        tklog::ASYNC_LOG.set_mod_option("testlog::module4", LogOption { level: Some(LEVEL::Info), format: Some(Format::Date), formatter: None, console: None, fileoption: Some(Box::new(FileTimeMode::new("module4.log", tklog::MODE::DAY, 0, true))) }).await.uselog();
+        tklog::ASYNC_LOG.set_mod_option("testlog::module4", LogOption { level: Some(LEVEL::Info), format: None, formatter: None, console: None, fileoption: Some(Box::new(FileTimeMode::new("module4.log", tklog::MODE::DAY, 0, true))) }).await.uselog();
         tklog::async_debug!("async module4,tklog api,LOG debug log>>", 123);
         tklog::async_info!("async module4,tklog api,LOG info log>>", 456);
         log::debug!("async module4,log api,debug log>>{}", 333);
@@ -103,7 +127,16 @@ mod module4 {
 }
 
 #[tokio::test]
-async fn testmod4() {
+async fn testasyncmod() {
+    tklog::ASYNC_LOG
+        .set_option(LogOption {
+            level: Some(LEVEL::Debug),
+            format: Some(Format::Date | Format::Microseconds),
+            formatter: None,
+            console: Some(true),
+            fileoption: Some(Box::new(FileTimeMode::new("asyncmodule.log", tklog::MODE::DAY, 0, true))),
+        })
+        .await;
     module3::testmod().await;
     module4::testmod().await;
 }
