@@ -19,7 +19,7 @@ use std::collections::HashMap;
 use crate::asyncfile::FileHandler;
 use crate::handle::{FileSizeMode, FileTimeMode, Handle, Handler};
 use crate::tklog::asynclog;
-use crate::{arguments_to_string, l2tk, log_fmt, HasOption, LogOption, LEVEL, MODE, PRINTMODE, TKLOG2ASYNC_LOG};
+use crate::{arguments_to_string, l2tk, log_fmt, HasOption, LogContext, LogOption, LEVEL, MODE, PRINTMODE, TKLOG2ASYNC_LOG};
 use tokio::sync::mpsc;
 
 /// this is the tklog encapsulated Logger whose File operations
@@ -49,6 +49,7 @@ pub struct Logger {
     mutex: tokio::sync::Mutex<u32>,
     pub mode: PRINTMODE,
     modmap: HashMap<String, (HasOption, Handle)>,
+    custom_handler:Option<fn(&LogContext) -> bool>,
 }
 
 impl Logger {
@@ -65,7 +66,7 @@ impl Logger {
                 crate::async_log!(m1.as_str(), m2.as_str());
             }
         });
-        Logger { sender, loghandle: handle, mutex: tokio::sync::Mutex::new(0), mode: PRINTMODE::DELAY, modmap: HashMap::new() }
+        Logger { sender, loghandle: handle, mutex: tokio::sync::Mutex::new(0), mode: PRINTMODE::DELAY, modmap: HashMap::new(), custom_handler: None }
     }
 
     pub fn log(&self, module: String, message: String) {
@@ -136,7 +137,14 @@ impl Logger {
         self.loghandle.is_file_line()
     }
 
-    pub fn fmt(&self, module: &str, level: LEVEL, filename: &str, line: u32, message: String) -> String {
+    pub fn fmt(&mut self, module: &str, level: LEVEL, filename: &str, line: u32, message: String) -> String {
+        if self.custom_handler.is_some() {
+            if let Some(ch) = &self.custom_handler {
+                if !ch(&LogContext { level: level, filename: filename.to_string(), line: line, log_body: message.clone(), modname: module.to_string() }) {
+                    return String::new();
+                }
+            }
+        }
         let mut fmat = self.loghandle.get_format();
         let mut formatter = self.loghandle.get_formatter();
         if module != "" && self.modmap.len() > 0 {
@@ -212,6 +220,10 @@ impl Logger {
         self.modmap.insert(module.to_string(), (ho, handler));
         self
     }
+
+    pub fn set_custom_handler(&mut self, handler: fn(&LogContext) -> bool) {
+        self.custom_handler = Some(handler);
+    }
 }
 
 pub struct Log;
@@ -271,6 +283,11 @@ impl Log {
         self
     }
 
+    pub fn set_custom_handler(&self, handler:fn(&LogContext) -> bool) -> &Self {
+        unsafe { asynclog.set_custom_handler(handler) }
+        self
+    }
+
     fn is_file_line(&self, module: &str) -> bool {
         unsafe {
             return asynclog.is_file_line(module);
@@ -322,7 +339,10 @@ impl log::Log for Log {
             file = record.file().unwrap_or("");
         }
         unsafe {
-            asynclog.log(module.to_string(), asynclog.fmt(module, level, file, line, arguments_to_string(args)));
+            let s = asynclog.fmt(module, level, file, line, arguments_to_string(args));
+            if !s.is_empty() {
+                asynclog.log(module.to_string(), s);
+            }
         }
     }
     fn flush(&self) {}
@@ -402,9 +422,15 @@ macro_rules! async_log_common {
                 }
                 let msg: String = formatted_args.join(",");
                 if  $crate::tklog::asynclog.mode==$crate::PRINTMODE::DELAY {
-                    $crate::tklog::asynclog.log(module.to_string(),$crate::tklog::asynclog.fmt(module,$level, file, line, msg));
+                    let s = $crate::tklog::asynclog.fmt(module,$level, file, line, msg);
+                    if !s.is_empty(){
+                        $crate::tklog::asynclog.log(module.to_string(),s);
+                    }
                 }else {
-                    $crate::tklog::asynclog.safeprint(module,$crate::tklog::asynclog.fmt(module,$level, file, line, msg).as_str()).await;
+                    let s = $crate::tklog::asynclog.fmt(module,$level, file, line, msg);
+                    if !s.is_empty(){
+                        $crate::tklog::asynclog.safeprint(module,s.as_str()).await;
+                    }
                 }
             }
         }
