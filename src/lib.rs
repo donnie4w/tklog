@@ -60,6 +60,14 @@ struct HasOption {
     pub isfileoption: bool,
 }
 
+pub struct LogContext {
+    pub level: LEVEL,
+    pub log_body: String,
+    pub filename: String,
+    pub line: u32,
+    pub modname:String
+}
+
 #[allow(non_upper_case_globals, non_snake_case)]
 pub mod Format {
     pub const Nano: u8 = 0;
@@ -346,18 +354,6 @@ fn l2tk(level: log::Level) -> LEVEL {
         log::Level::Trace => LEVEL::Trace,
     }
 }
-
-// fn tk2l(level: LEVEL) -> log::LevelFilter {
-//     match level {
-//         LEVEL::Trace => log::LevelFilter::Trace,
-//         LEVEL::Debug => log::LevelFilter::Debug,
-//         LEVEL::Info => log::LevelFilter::Info,
-//         LEVEL::Warn => log::LevelFilter::Warn,
-//         LEVEL::Error => log::LevelFilter::Error,
-//         LEVEL::Fatal => log::LevelFilter::Off,
-//         LEVEL::Off => log::LevelFilter::Off,
-//     }
-// }
 
 fn arguments_to_string(args: &std::fmt::Arguments) -> String {
     fmt::format(*args)
