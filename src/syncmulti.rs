@@ -85,7 +85,9 @@ macro_rules! formats {
                     line = line!();
                 }
                 let ss = logger.fmt(module,$level, file, line, format!($($arg),*));
-                logger.print(module,ss.as_str());
+                if !ss.is_empty(){
+                    logger.print(module,ss.as_str());
+                }
             }
         }
     };
@@ -109,7 +111,9 @@ macro_rules! logs_common {
                 }
                 let msg: String = formatted_args.join(",");
                 let ss = logger.fmt(module,$level, file, line, msg);
-                logger.print(module, ss.as_str());
+                if !ss.is_empty(){
+                    logger.print(module, ss.as_str());
+                }
             }
         }
     };
