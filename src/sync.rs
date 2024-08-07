@@ -20,7 +20,7 @@ use crate::{
     l2tk, log_fmt,
     syncfile::FileHandler,
     tklog::synclog,
-    HasOption, LogOption, LEVEL, MODE, PRINTMODE, TKLOG2SYNCLOG,
+    HasOption, LogContext, LogOption, LEVEL, MODE, PRINTMODE, TKLOG2SYNCLOG,
 };
 use std::thread;
 use std::{
@@ -56,6 +56,7 @@ pub struct Logger {
     mutex: std::sync::Mutex<u32>,
     pub mode: PRINTMODE,
     modmap: HashMap<String, (HasOption, Handle)>,
+    custom_handler: Option<fn(&LogContext) -> bool>,
 }
 
 impl Logger {
@@ -73,7 +74,7 @@ impl Logger {
                 crate::log!(m1.as_str(), m2.as_str());
             }
         });
-        Logger { sender, loghandle: handle, mutex: std::sync::Mutex::new(0), mode: PRINTMODE::DELAY, modmap: HashMap::new() }
+        Logger { sender, loghandle: handle, mutex: std::sync::Mutex::new(0), mode: PRINTMODE::DELAY, modmap: HashMap::new(), custom_handler: None }
     }
 
     pub fn print(&mut self, module: &str, message: &str) {
@@ -143,7 +144,14 @@ impl Logger {
         self.loghandle.is_file_line()
     }
 
-    pub fn fmt(&self, module: &str, level: LEVEL, filename: &str, line: u32, message: String) -> String {
+    pub fn fmt(&mut self, module: &str, level: LEVEL, filename: &str, line: u32, message: String) -> String {
+        if self.custom_handler.is_some() {
+            if let Some(ch) = &self.custom_handler {
+                if !ch(&LogContext { level: level, filename: filename.to_string(), line: line, log_body: message.clone(), modname: module.to_string() }) {
+                    return String::new();
+                }
+            }
+        }
         let mut fmat = self.loghandle.get_format();
         let mut formatter = self.loghandle.get_formatter();
         if module != "" && self.modmap.len() > 0 {
@@ -219,6 +227,10 @@ impl Logger {
         self.modmap.insert(module.to_string(), (ho, handler));
         self
     }
+
+    pub fn set_custom_handler(&mut self, handler: fn(&LogContext) -> bool) {
+        self.custom_handler = Some(handler);
+    }
 }
 
 pub struct Log;
@@ -292,6 +304,11 @@ impl Log {
         self
     }
 
+    pub fn set_custom_handler(&self, handler: fn(&LogContext) -> bool) -> &Self {
+        unsafe { synclog.set_custom_handler(handler) }
+        self
+    }
+
     fn is_file_line(&self, module: &str) -> bool {
         unsafe {
             return synclog.is_file_line(module);
@@ -329,9 +346,15 @@ impl log::Log for Log {
         }
         unsafe {
             if synclog.mode == PRINTMODE::DELAY {
-                synclog.log(module.to_string(), synclog.fmt(module, level, file, line, arguments_to_string(args)));
+                let s = synclog.fmt(module, level, file, line, arguments_to_string(args));
+                if !s.is_empty() {
+                    synclog.log(module.to_string(), s);
+                }
             } else {
-                synclog.safeprint(module, synclog.fmt(module, level, file, line, arguments_to_string(args)).as_str());
+                let s = synclog.fmt(module, level, file, line, arguments_to_string(args));
+                if !s.is_empty() {
+                    synclog.safeprint(module, s.as_str());
+                }
             }
         }
     }
@@ -412,9 +435,15 @@ macro_rules! log_common {
                 }
                 let msg: String = formatted_args.join(",");
                 if  $crate::tklog::synclog.mode==$crate::PRINTMODE::DELAY {
-                    $crate::tklog::synclog.log(module.to_string(),$crate::tklog::synclog.fmt(module,$level, file, line, msg));
+                    let s = $crate::tklog::synclog.fmt(module,$level, file, line, msg);
+                    if !s.is_empty(){
+                        $crate::tklog::synclog.log(module.to_string(),s);
+                    }
                 }else {
-                    $crate::tklog::synclog.safeprint(module,$crate::tklog::synclog.fmt(module,$level, file, line, msg).as_str());
+                    let s = $crate::tklog::synclog.fmt(module,$level, file, line, msg);
+                    if !s.is_empty(){
+                        $crate::tklog::synclog.safeprint(module,s.as_str());
+                    }
                 }
             }
         }
