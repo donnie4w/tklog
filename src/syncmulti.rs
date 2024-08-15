@@ -109,7 +109,7 @@ macro_rules! logs_common {
                     file = file!();
                     line = line!();
                 }
-                let msg: String = formatted_args.join(",");
+                let msg: String = formatted_args.join(logger.get_separator().as_str());
                 let ss = logger.fmt(module,$level, file, line, msg);
                 if !ss.is_empty(){
                     logger.print(module, ss.as_str());
