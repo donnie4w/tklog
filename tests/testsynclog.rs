@@ -21,8 +21,10 @@ fn testlog() {
     log_init();
     trace!("trace>>>>", "aaaaaaaaa", 1, 2, 3, 4);
     debug!("debug>>>>", "bbbbbbbbb", 1, 2, 3, 5);
+    LOG.set_separator("|");  //设置参数分隔符 | 
     info!("info>>>>", "ccccccccc", 1, 2, 3, 5);
     warn!("warn>>>>", "dddddddddd", 1, 2, 3, 6);
+    LOG.set_separator(","); //设置参数分隔符 ，
     error!("error>>>>", "eeeeeeee", 1, 2, 3, 7);
     fatal!("fatal>>>>", "ffffffff", 1, 2, 3, 8);
     thread::sleep(Duration::from_secs(1))
@@ -48,7 +50,7 @@ fn testthreads() {
 #[test]
 fn testmultilog() {
     let mut log = Logger::new();
-    log.set_console(true).set_level(LEVEL::Debug).set_cutmode_by_time("tklogs.log", MODE::DAY, 10, true).set_formatter("{message} | {time} {file}{level}\n");
+    log.set_separator(" ").set_console(true).set_level(LEVEL::Debug).set_cutmode_by_time("tklogs.log", MODE::DAY, 10, true).set_formatter("{message} | {time} {file}{level}\n");
     let mut logger = Arc::clone(&Arc::new(Mutex::new(log)));
     let log = logger.borrow_mut();
     traces!(log, "traces>>>>", "AAAAAAAAA", 1, 2, 3, 4);
