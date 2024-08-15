@@ -49,7 +49,8 @@ pub struct Logger {
     mutex: tokio::sync::Mutex<u32>,
     pub mode: PRINTMODE,
     modmap: HashMap<String, (HasOption, Handle)>,
-    custom_handler:Option<fn(&LogContext) -> bool>,
+    custom_handler: Option<fn(&LogContext) -> bool>,
+    separator: String,
 }
 
 impl Logger {
@@ -66,7 +67,7 @@ impl Logger {
                 crate::async_log!(m1.as_str(), m2.as_str());
             }
         });
-        Logger { sender, loghandle: handle, mutex: tokio::sync::Mutex::new(0), mode: PRINTMODE::DELAY, modmap: HashMap::new(), custom_handler: None }
+        Logger { sender, loghandle: handle, mutex: tokio::sync::Mutex::new(0), mode: PRINTMODE::DELAY, modmap: HashMap::new(), custom_handler: None, separator: "".to_string() }
     }
 
     pub fn log(&self, module: String, message: String) {
@@ -224,6 +225,15 @@ impl Logger {
     pub fn set_custom_handler(&mut self, handler: fn(&LogContext) -> bool) {
         self.custom_handler = Some(handler);
     }
+
+    pub fn set_separator(&mut self, separator: &str) -> &mut Self {
+        self.separator = separator.to_string();
+        self
+    }
+
+    pub fn get_separator(&self) -> String {
+        self.separator.clone()
+    }
 }
 
 pub struct Log;
@@ -283,7 +293,7 @@ impl Log {
         self
     }
 
-    pub fn set_custom_handler(&self, handler:fn(&LogContext) -> bool) -> &Self {
+    pub fn set_custom_handler(&self, handler: fn(&LogContext) -> bool) -> &Self {
         unsafe { asynclog.set_custom_handler(handler) }
         self
     }
@@ -305,6 +315,13 @@ impl Log {
         unsafe {
             asynclog.set_mod_option(module, option).await;
         }
+        self
+    }
+
+    pub fn set_separator(&self, separator: &str) -> &Self {
+        unsafe {
+            asynclog.set_separator(separator);
+        };
         self
     }
 
@@ -420,7 +437,7 @@ macro_rules! async_log_common {
                     file = file!();
                     line = line!();
                 }
-                let msg: String = formatted_args.join(",");
+                let msg: String = formatted_args.join($crate::tklog::asynclog.get_separator().as_str());
                 if  $crate::tklog::asynclog.mode==$crate::PRINTMODE::DELAY {
                     let s = $crate::tklog::asynclog.fmt(module,$level, file, line, msg);
                     if !s.is_empty(){
