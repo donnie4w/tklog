@@ -23,7 +23,7 @@
 
 ```rust
 [dependencies]
-tklog = "0.0.9"   #   "0.0.x" current version
+tklog = "0.0.10"   #   "0.0.x" current version
 ```
 
 最简单常用的方式：**直接调用**
@@ -604,7 +604,41 @@ modname >>>>>>>>>>>>>>>>>"testsynclog"
 ```
 
 ###### 说明：
-当 fn custom_handler(lc: &LogContext) -> bool  返回true时，tklog调用custom_handler执行自定义函数后，继续执行tklog的打印流程。当返回false时，tklog不再执行tklog的打印程序。直接返回。如示例中所示，当年日志级别为Debug时，返回false，所以，tklog的Debug日志，不再打印出来。
+当 `fn custom_handler(lc: &LogContext) -> bool`  返回true时，tklog调用`custom_handler`执行自定义函数后，继续执行tklog的打印流程。当返回false时，tklog不再执行tklog的打印程序。直接返回。如示例中所示，当年日志级别为Debug时，返回false，所以，tklog的Debug日志，不再打印出来。
+
+## tklog 支持自定义日志多参数分隔符
+
+###### tklog 通过 `set_separator()` 设置分隔符
+
+
+```rust
+#[test]
+fn testlog() {
+    log_init();
+    trace!("trace>>>>", "aaaaaaaaa", 1, 2, 3, 4);
+    debug!("debug>>>>", "bbbbbbbbb", 1, 2, 3, 5);
+    LOG.set_separator("|");  //设置参数分隔符 | 
+    info!("info>>>>", "ccccccccc", 1, 2, 3, 5);
+    warn!("warn>>>>", "dddddddddd", 1, 2, 3, 6);
+    LOG.set_separator(","); //设置参数分隔符 ，
+    error!("error>>>>", "eeeeeeee", 1, 2, 3, 7);
+    fatal!("fatal>>>>", "ffffffff", 1, 2, 3, 8);
+    thread::sleep(Duration::from_secs(1))
+}
+```
+
+###### 执行结果
+
+```rust
+---- testlog stdout ----
+[TRACE] 2024-08-15 14:14:19.289590 tests\testsynclog.rs 22:trace>>>>aaaaaaaaa1234
+[DEBUG] 2024-08-15 14:14:19.289744 tests\testsynclog.rs 23:debug>>>>bbbbbbbbb1235
+[INFO] 2024-08-15 14:14:19.289761 tests\testsynclog.rs 25:info>>>>|ccccccccc|1|2|3|5
+[WARN] 2024-08-15 14:14:19.289774 tests\testsynclog.rs 26:warn>>>>|dddddddddd|1|2|3|6
+[ERROR] 2024-08-15 14:14:19.289789 tests\testsynclog.rs 28:error>>>>,eeeeeeee,1,2,3,7
+[FATAL] 2024-08-15 14:14:19.289802 tests\testsynclog.rs 29:fatal>>>>,ffffffff,1,2,3,8
+```
+
 
 ------------
 
