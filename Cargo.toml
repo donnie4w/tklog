@@ -1,6 +1,6 @@
 [package]
 name = "tklog"
-version = "0.0.9"
+version = "0.0.10"
 edition = "2021"
 authors = ["donnie4w <donnie4w@gmail.com>"]
 description = "Lightweight and efficient rust structured log library with support for log level, file shred, compressed archive"
@@ -20,10 +20,10 @@ include = [
 ]
 
 [dependencies]
-tokio = { version = "1.37.0", features = ["full"] }
+tokio = { version = "1.39.2", features = ["full"] }
 chrono = "0.4.38"
 once_cell = "1.19.0"
-flate2 = "1.0"
+flate2 = "1.0.31"
 crossbeam-channel = "0.5.13"
-regex = "1.10.4"
-log = "0.4.21"
+regex = "1.10.6"
+log = "0.4.22"
