@@ -8,7 +8,7 @@ use tokio::{sync::Mutex, time::Instant};
 async fn async_log_init() {
     ASYNC_LOG
         .set_console(true)
-        .set_level(LEVEL::Error)
+        .set_level(LEVEL::Debug)
         .set_format(Format::LevelFlag | Format::Date | Format::Time | Format::ShortFileName)
         .set_cutmode_by_size("tklog_async.log", 10000, 10, true)
         .await;
@@ -19,8 +19,10 @@ async fn testlog() {
     async_log_init().await;
     async_trace!("trace>>>>", "aaaaaaaaaaaa", 1, 2, 3);
     async_debug!("debug>>>>", "aaaaaaaaaaaa", 1, 2, 3);
+    ASYNC_LOG.set_separator("|");
     async_info!("info>>>>", "bbbbbbbbbbbb", 1, 2, 3);
     async_warn!("warn>>>>", "ccccccccccccc", 1, 2, 3);
+    ASYNC_LOG.set_separator(",");
     async_error!("error>>>>", "ddddddddddddd", 1, 2, 3);
     async_fatal!("fatal>>>>", "eeeeeeeeeeeeee", 1, 2, 3);
     tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
@@ -31,6 +33,7 @@ async fn testmultilogs() {
     let mut log = tklog::Async::Logger::new();
     log.set_console(true)
         .set_level(LEVEL::Debug)
+        .set_separator(",")
         .set_cutmode_by_time("tklogs.log", MODE::DAY, 10, true)
         .await
         .set_formatter("{message} | {time} {file}{level}\n");
