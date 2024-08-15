@@ -22,11 +22,11 @@ use crate::{
     tklog::synclog,
     HasOption, LogContext, LogOption, LEVEL, MODE, PRINTMODE, TKLOG2SYNCLOG,
 };
-use std::thread;
 use std::{
     collections::HashMap,
     sync::mpsc::{channel, Sender},
 };
+use std::thread;
 
 /// this is the tklog encapsulated Logger whose File operations
 /// are based on the standard library std::fs::File,therefore,
@@ -57,6 +57,7 @@ pub struct Logger {
     pub mode: PRINTMODE,
     modmap: HashMap<String, (HasOption, Handle)>,
     custom_handler: Option<fn(&LogContext) -> bool>,
+    separator: String
 }
 
 impl Logger {
@@ -74,7 +75,7 @@ impl Logger {
                 crate::log!(m1.as_str(), m2.as_str());
             }
         });
-        Logger { sender, loghandle: handle, mutex: std::sync::Mutex::new(0), mode: PRINTMODE::DELAY, modmap: HashMap::new(), custom_handler: None }
+        Logger { sender, loghandle: handle, mutex: std::sync::Mutex::new(0), mode: PRINTMODE::DELAY, modmap: HashMap::new(), custom_handler: None, separator: "".to_string() }
     }
 
     pub fn print(&mut self, module: &str, message: &str) {
@@ -228,8 +229,18 @@ impl Logger {
         self
     }
 
-    pub fn set_custom_handler(&mut self, handler: fn(&LogContext) -> bool) {
+    pub fn set_custom_handler(&mut self, handler: fn(&LogContext) -> bool) -> &mut Self {
         self.custom_handler = Some(handler);
+        self
+    }
+
+    pub fn set_separator(&mut self, separator: &str) -> &mut Self {
+        self.separator = separator.to_string();
+        self
+    }
+
+    pub fn get_separator(&self) -> String {
+        self.separator.clone()
     }
 }
 
@@ -305,7 +316,16 @@ impl Log {
     }
 
     pub fn set_custom_handler(&self, handler: fn(&LogContext) -> bool) -> &Self {
-        unsafe { synclog.set_custom_handler(handler) }
+        unsafe {
+            synclog.set_custom_handler(handler);
+        }
+        self
+    }
+
+    pub fn set_separator(&self, separator: &str) -> &Self {
+        unsafe {
+            synclog.set_separator(separator);
+        }
         self
     }
 
@@ -433,7 +453,7 @@ macro_rules! log_common {
                     file = file!();
                     line = line!();
                 }
-                let msg: String = formatted_args.join(",");
+                let msg: String = formatted_args.join($crate::tklog::synclog.get_separator().as_str());
                 if  $crate::tklog::synclog.mode==$crate::PRINTMODE::DELAY {
                     let s = $crate::tklog::synclog.fmt(module,$level, file, line, msg);
                     if !s.is_empty(){
