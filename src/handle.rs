@@ -108,10 +108,10 @@ impl FileSizeMode {
 }
 
 pub struct Handler {
-    level: LEVEL,  // log level
-    format: u8,    // log format
-    console: bool, //
-    formatter: String,
+    level: LEVEL,      // log level
+    format: u8,        // log format
+    console: bool,     // log console
+    formatter: String, // log formatter
     file_handler: Option<syncfile::FileHandler>,
     async_file_handler: Option<asyncfile::FileHandler>,
     async_console: Option<Console>,
