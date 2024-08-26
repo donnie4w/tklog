@@ -23,7 +23,7 @@
 
 ```rust
 [dependencies]
-tklog = "0.0.10"   #   "0.0.x" current version
+tklog = "0.1.0"   #   "0.x.x" current version
 ```
 
 最简单常用的方式：**直接调用**
@@ -639,6 +639,39 @@ fn testlog() {
 [FATAL] 2024-08-15 14:14:19.289802 tests\testsynclog.rs 29:fatal>>>>,ffffffff,1,2,3,8
 ```
 
+## tklog 支持日志级别设置独立日志格式参数
+
+###### tklog 通过 `set_level_option()` 设置日志级别的独立日志参数
+
+
+```rust
+#[test]
+fn testlog() {
+    //将Info级别的日志格式设置为 Format::LevelFlag
+    //将Fatal级别的日志格式设置为 Format::LevelFlag | Format::Date
+    LOG.set_level_option(LEVEL::Info, LevelOption { format: Some(Format::LevelFlag), formatter: None })
+    .set_level_option(LEVEL::Fatal, LevelOption { format: Some(Format::LevelFlag | Format::Date), formatter: None});
+
+    trace!("this is trace log");
+    debug!("this is debug log");
+    info!("this is info log");
+    warn!("this is warn log");
+    error!("this is error log");
+    fatal!("this is fatal log");
+    thread::sleep(Duration::from_secs(1))
+}
+```
+
+###### 执行结果
+
+```rust
+---- testlog stdout ----
+[DEBUG] 2024-08-24 15:06:02 test_0100.rs 17:this is debug log
+[INFO] this is info log
+[WARN] 2024-08-24 15:06:02 test_0100.rs 19:this is warn log
+[ERROR] 2024-08-24 15:06:02 test_0100.rs 20:this is error log
+[FATAL] 2024-08-24 this is fatal log
+```
 
 ------------
 
