@@ -68,6 +68,11 @@ pub struct LogContext {
     pub modname:String
 }
 
+pub  struct LevelOption{
+    pub format: Option<u8>,
+    pub formatter: Option<String>,
+}
+
 #[allow(non_upper_case_globals, non_snake_case)]
 pub mod Format {
     pub const Nano: u8 = 0;
