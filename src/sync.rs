@@ -20,13 +20,13 @@ use crate::{
     l2tk, log_fmt,
     syncfile::FileHandler,
     tklog::synclog,
-    HasOption, LogContext, LogOption, LEVEL, MODE, PRINTMODE, TKLOG2SYNCLOG,
+    HasOption, LevelOption, LogContext, LogOption, LEVEL, MODE, PRINTMODE, TKLOG2SYNCLOG,
 };
+use std::thread;
 use std::{
     collections::HashMap,
     sync::mpsc::{channel, Sender},
 };
-use std::thread;
 
 /// this is the tklog encapsulated Logger whose File operations
 /// are based on the standard library std::fs::File,therefore,
@@ -57,7 +57,8 @@ pub struct Logger {
     pub mode: PRINTMODE,
     modmap: HashMap<String, (HasOption, Handle)>,
     custom_handler: Option<fn(&LogContext) -> bool>,
-    separator: String
+    separator: String,
+    levels: [Option<LevelOption>; 7],
 }
 
 impl Logger {
@@ -75,7 +76,16 @@ impl Logger {
                 crate::log!(m1.as_str(), m2.as_str());
             }
         });
-        Logger { sender, loghandle: handle, mutex: std::sync::Mutex::new(0), mode: PRINTMODE::DELAY, modmap: HashMap::new(), custom_handler: None, separator: "".to_string() }
+        Logger {
+            sender,
+            loghandle: handle,
+            mutex: std::sync::Mutex::new(0),
+            mode: PRINTMODE::DELAY,
+            modmap: HashMap::new(),
+            custom_handler: None,
+            separator: "".to_string(),
+            levels: std::array::from_fn(|_| None),
+        }
     }
 
     pub fn print(&mut self, module: &str, message: &str) {
@@ -166,6 +176,16 @@ impl Logger {
                 }
             }
         }
+
+        if let Some(lp) = &self.levels[level as usize - 1] {
+                if let Some(fmt) = &lp.format{
+                    fmat = *fmt
+                }
+                if let Some(fmter) = &lp.formatter {
+                    formatter = fmter.as_str();
+                }
+        }
+
         log_fmt(fmat, formatter, level, filename, line, message)
     }
 
@@ -231,6 +251,11 @@ impl Logger {
 
     pub fn set_custom_handler(&mut self, handler: fn(&LogContext) -> bool) -> &mut Self {
         self.custom_handler = Some(handler);
+        self
+    }
+
+    pub fn set_level_option(&mut self, level: LEVEL, option: LevelOption) -> &mut Self {
+        self.levels[level as usize - 1] = Some(option);
         self
     }
 
@@ -311,6 +336,13 @@ impl Log {
     pub fn set_mod_option(&self, module: &str, option: LogOption) -> &Self {
         unsafe {
             synclog.set_mod_option(module, option);
+        }
+        self
+    }
+
+    pub fn set_level_option(&self, level: LEVEL, option: LevelOption) -> &Self {
+        unsafe {
+            synclog.set_level_option(level, option);
         }
         self
     }
