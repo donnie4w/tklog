@@ -19,7 +19,7 @@ use std::collections::HashMap;
 use crate::asyncfile::FileHandler;
 use crate::handle::{FileSizeMode, FileTimeMode, Handle, Handler};
 use crate::tklog::asynclog;
-use crate::{arguments_to_string, l2tk, log_fmt, HasOption, LogContext, LogOption, LEVEL, MODE, PRINTMODE, TKLOG2ASYNC_LOG};
+use crate::{arguments_to_string, l2tk, log_fmt, HasOption, LevelOption, LogContext, LogOption, LEVEL, MODE, PRINTMODE, TKLOG2ASYNC_LOG};
 use tokio::sync::mpsc;
 
 /// this is the tklog encapsulated Logger whose File operations
@@ -51,6 +51,7 @@ pub struct Logger {
     modmap: HashMap<String, (HasOption, Handle)>,
     custom_handler: Option<fn(&LogContext) -> bool>,
     separator: String,
+    levels: [Option<LevelOption>; 7],
 }
 
 impl Logger {
@@ -67,7 +68,16 @@ impl Logger {
                 crate::async_log!(m1.as_str(), m2.as_str());
             }
         });
-        Logger { sender, loghandle: handle, mutex: tokio::sync::Mutex::new(0), mode: PRINTMODE::DELAY, modmap: HashMap::new(), custom_handler: None, separator: "".to_string() }
+        Logger {
+            sender,
+            loghandle: handle,
+            mutex: tokio::sync::Mutex::new(0),
+            mode: PRINTMODE::DELAY,
+            modmap: HashMap::new(),
+            custom_handler: None,
+            separator: "".to_string(),
+            levels: std::array::from_fn(|_| None),
+        }
     }
 
     pub fn log(&self, module: String, message: String) {
@@ -148,6 +158,7 @@ impl Logger {
         }
         let mut fmat = self.loghandle.get_format();
         let mut formatter = self.loghandle.get_formatter();
+        
         if module != "" && self.modmap.len() > 0 {
             if let Some(mm) = self.modmap.get(module) {
                 let (has, h) = mm;
@@ -159,6 +170,16 @@ impl Logger {
                 }
             }
         }
+
+        if let Some(lp) = &self.levels[level as usize - 1] {
+            if let Some(fmt) = &lp.format {
+                fmat = *fmt
+            }
+            if let Some(fmter) = &lp.formatter {
+                formatter = fmter.as_str();
+            }
+        }
+
         log_fmt(fmat, formatter, level, filename, line, message)
     }
 
@@ -224,6 +245,11 @@ impl Logger {
 
     pub fn set_custom_handler(&mut self, handler: fn(&LogContext) -> bool) {
         self.custom_handler = Some(handler);
+    }
+
+    pub fn set_level_option(&mut self, level: LEVEL, option: LevelOption) -> &mut Self {
+        self.levels[level as usize - 1] = Some(option);
+        self
     }
 
     pub fn set_separator(&mut self, separator: &str) -> &mut Self {
@@ -314,6 +340,13 @@ impl Log {
     pub async fn set_mod_option(&self, module: &str, option: LogOption) -> &Self {
         unsafe {
             asynclog.set_mod_option(module, option).await;
+        }
+        self
+    }
+
+    pub fn set_level_option(&self, level: LEVEL, option: LevelOption) -> &Self {
+        unsafe {
+            asynclog.set_level_option(level, option);
         }
         self
     }
