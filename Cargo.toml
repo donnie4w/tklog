@@ -1,6 +1,6 @@
 [package]
 name = "tklog"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["donnie4w <donnie4w@gmail.com>"]
 description = "Lightweight and efficient rust structured log library with support for log level, file shred, compressed archive"
