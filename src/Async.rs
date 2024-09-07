@@ -17,9 +17,9 @@
 use std::collections::HashMap;
 
 use crate::asyncfile::FileHandler;
-use crate::handle::{FileSizeMode, FileTimeMode, Handle, Handler};
+use crate::handle::{FHandler, FileOptionType, FmtHandler};
 use crate::tklog::asynclog;
-use crate::{arguments_to_string, l2tk, log_fmt, HasOption, LevelOption, LogContext, LogOption, LEVEL, MODE, PRINTMODE, TKLOG2ASYNC_LOG};
+use crate::{arguments_to_string, l2tk, log_fmt, Format, LogContext, LogOption, OptionTrait, LEVEL, MODE, PRINTMODE, TKLOG2ASYNC_LOG};
 use tokio::sync::mpsc;
 
 /// this is the tklog encapsulated Logger whose File operations
@@ -44,108 +44,159 @@ use tokio::sync::mpsc;
 /// };
 /// ```
 pub struct Logger {
-    sender: mpsc::UnboundedSender<(String, String)>,
-    loghandle: Handle,
+    sender: mpsc::UnboundedSender<(LEVEL, String, String)>,
+    fmthandle: FmtHandler,
+    filehandle: (String, FHandler),
     mutex: tokio::sync::Mutex<u32>,
     pub mode: PRINTMODE,
-    modmap: HashMap<String, (HasOption, Handle)>,
+    modmap: HashMap<String, (LogOption, String)>,
+    fmap: HashMap<String, FHandler>,
     custom_handler: Option<fn(&LogContext) -> bool>,
     separator: String,
-    levels: [Option<LevelOption>; 7],
+    levels: [Option<(LogOption, String)>; 7],
 }
 
 impl Logger {
+
     pub fn new() -> Self {
-        Self::new_with_handle(Handle::new(None))
-    }
-    pub fn new_with_handle(handle: Handle) -> Self {
         let (sender, mut receiver) = mpsc::unbounded_channel();
         tokio::spawn(async move {
             while let Some(message) = receiver.recv().await {
-                let (module, msg) = message;
+                let (level, module, msg) = message;
                 let m1: String = module;
                 let m2: String = msg;
-                crate::async_log!(m1.as_str(), m2.as_str());
+                crate::async_log!(level, m1.as_str(), m2.as_str());
             }
         });
         Logger {
             sender,
-            loghandle: handle,
+            fmthandle: FmtHandler::new(),
+            filehandle: ("".to_string(), FHandler::new()),
             mutex: tokio::sync::Mutex::new(0),
             mode: PRINTMODE::DELAY,
             modmap: HashMap::new(),
+            fmap: HashMap::new(),
             custom_handler: None,
             separator: "".to_string(),
             levels: std::array::from_fn(|_| None),
         }
     }
 
-    pub fn log(&self, module: String, message: String) {
-        self.sender.send((module, message)).expect("send error");
-    }
+    pub async fn print(&mut self, level: LEVEL, module: &str, message: &str) {
+        let mut console = self.fmthandle.get_console();
 
-    pub async fn print(&mut self, module: &str, message: &str) {
-        let mut console = self.loghandle.get_console();
         if module != "" && self.modmap.len() > 0 {
             if let Some(mm) = self.modmap.get_mut(module) {
-                let (has, h) = mm;
-                if has.isconsole {
-                    console = h.get_console();
+                let (lo, filename) = mm;
+                if let Some(cs) = lo.console {
+                    console = cs
                 }
-                if has.isfileoption {
-                    let _ = h.async_print(console, message).await;
+                if filename != "" {
+                    if *filename == self.filehandle.0 {
+                        let _ = self.filehandle.1.async_print(console, message).await;
+                    } else {
+                        if let Some(fm) = self.fmap.get_mut(filename) {
+                            let _ = fm.async_print(console, message).await;
+                        }
+                    }
                     return;
                 }
             }
         }
-        let _ = self.loghandle.async_print(console, message).await;
+
+        if let Some(lp) = &mut self.levels[level as usize - 1] {
+            let (lo, filename) = lp;
+            if let Some(cs) = lo.console {
+                console = cs
+            }
+            if filename != "" {
+                if *filename == self.filehandle.0 {
+                    let _ = self.filehandle.1.async_print(console, message).await;
+                } else {
+                    if let Some(fm) = self.fmap.get_mut(filename) {
+                        let _ = fm.async_print(console, message).await;
+                    }
+                }
+                return;
+            }
+        }
+        let _ = self.filehandle.1.async_print(console, message).await;
     }
 
-    pub async fn safeprint(&mut self, module: &str, message: &str) {
-        let mut console = self.loghandle.get_console();
+    pub async fn safeprint(&mut self, level: LEVEL, module: &str, message: &str) {
+        let mut console = self.fmthandle.get_console();
         let _ = &self.mutex.lock().await;
         if module != "" && self.modmap.len() > 0 {
             if let Some(mm) = self.modmap.get_mut(module) {
-                let (has, h) = mm;
-                if has.isconsole {
-                    console = h.get_console();
+                let (lo, filename) = mm;
+                if let Some(cs) = lo.console {
+                    console = cs
                 }
-                if has.isfileoption {
-                    let _ = h.async_print(console, message).await;
+                if filename != "" {
+                    if *filename == self.filehandle.0 {
+                        let _ = self.filehandle.1.async_print(console, message).await;
+                    } else {
+                        if let Some(fm) = self.fmap.get_mut(filename) {
+                            let _ = fm.async_print(console, message).await;
+                        }
+                    }
                     return;
                 }
             }
         }
-        let _ = self.loghandle.async_print(console, message).await;
+
+        if let Some(lp) = &mut self.levels[level as usize - 1] {
+            let (lo, filename) = lp;
+            if let Some(cs) = lo.console {
+                console = cs
+            }
+            if filename != "" {
+                if *filename == self.filehandle.0 {
+                    let _ = self.filehandle.1.async_print(console, message).await;
+                } else {
+                    if let Some(fm) = self.fmap.get_mut(filename) {
+                        let _ = fm.async_print(console, message).await;
+                    }
+                }
+                return;
+            }
+        }
+        let _ = self.filehandle.1.async_print(console, message).await;
+    }
+
+    pub fn log(&self, level: LEVEL, module: String, message: String) {
+        self.sender.send((level, module, message)).expect("send error");
     }
 
     pub fn get_level(&self, module: &str) -> LEVEL {
         if module != "" && self.modmap.len() > 0 {
             if let Some(mm) = self.modmap.get(module) {
-                let (has, h) = mm;
-                if has.islevel {
-                    return h.get_level();
+                let (lo, _) = mm;
+                if let Some(level) = lo.level {
+                    return level;
                 }
             }
         }
-        self.loghandle.get_level()
+        self.fmthandle.get_level()
     }
 
-    pub async fn set_handler(&mut self, handler: Handler) {
-        let _ = &self.mutex.lock().await;
-        self.loghandle.set_handler(handler);
-    }
+    pub fn is_file_line(&self, level: LEVEL, module: &str) -> bool {
+        if let Some(lp) = &self.levels[level as usize - 1] {
+            let (lo, _) = lp;
+            if let Some(v) = lo.format {
+                return v & (Format::LongFileName | Format::ShortFileName) != 0;
+            }
+        }
 
-    pub fn is_file_line(&self, module: &str) -> bool {
         if module != "" && self.modmap.len() > 0 {
             if let Some(mm) = self.modmap.get(module) {
-                let (has, h) = mm;
-                if has.isformat {
-                    return h.is_file_line();
+                let (lo, _) = mm;
+                if let Some(v) = lo.format {
+                    return v & (Format::LongFileName | Format::ShortFileName) != 0;
                 }
             }
         }
-        self.loghandle.is_file_line()
+        self.fmthandle.is_file_line()
     }
 
     pub fn fmt(&mut self, module: &str, level: LEVEL, filename: &str, line: u32, message: String) -> String {
@@ -156,31 +207,31 @@ impl Logger {
                 }
             }
         }
-        let mut fmat = self.loghandle.get_format();
-        let mut formatter = self.loghandle.get_formatter();
-        
+        let mut fmat = self.fmthandle.get_format();
+        let mut formatter = &self.fmthandle.get_formatter();
         if module != "" && self.modmap.len() > 0 {
             if let Some(mm) = self.modmap.get(module) {
-                let (has, h) = mm;
-                if has.isformat {
-                    fmat = h.get_format();
+                let (lo, _) = mm;
+                if let Some(v) = lo.format {
+                    fmat = v;
                 }
-                if has.isformatter {
-                    formatter = h.get_formatter();
+                if let Some(v) = &lo.formatter {
+                    formatter = v;
                 }
             }
         }
 
         if let Some(lp) = &self.levels[level as usize - 1] {
-            if let Some(fmt) = &lp.format {
-                fmat = *fmt
+            let (lo, _) = lp;
+            if let Some(v) = lo.format {
+                fmat = v;
             }
-            if let Some(fmter) = &lp.formatter {
-                formatter = fmter.as_str();
+            if let Some(v) = &lo.formatter {
+                formatter = v;
             }
         }
 
-        log_fmt(fmat, formatter, level, filename, line, message)
+        log_fmt(fmat, formatter.as_str(), level, filename, line, message)
     }
 
     pub fn set_printmode(&mut self, mode: PRINTMODE) -> &mut Self {
@@ -189,57 +240,84 @@ impl Logger {
     }
 
     pub fn set_level(&mut self, level: LEVEL) -> &mut Self {
-        self.loghandle.set_level(level);
+        self.fmthandle.set_level(level);
         self
     }
 
     pub fn set_console(&mut self, console: bool) -> &mut Self {
-        self.loghandle.set_console(console);
+        self.fmthandle.set_console(console);
         self
     }
 
     /**Format::LevelFlag | Format::Date | Format::Time | Format::ShortFileName; */
     pub fn set_format(&mut self, format: u8) -> &mut Self {
-        self.loghandle.set_format(format);
+        self.fmthandle.set_format(format);
         self
     }
 
     /** default: "{level}{time} {file}:{message}\n" */
     pub fn set_formatter(&mut self, formatter: &str) -> &mut Self {
-        self.loghandle.set_formatter(formatter.to_string());
+        self.fmthandle.set_formatter(formatter.to_string());
         self
     }
 
     pub async fn set_cutmode_by_size(&mut self, filename: &str, maxsize: u64, maxbackups: u32, compress: bool) -> &mut Self {
-        let fsm = FileSizeMode::new(filename, maxsize, maxbackups, compress);
+        let fsm = FileOptionType::new(crate::CUTMODE::SIZE, MODE::DAY, filename, maxsize, maxbackups, compress);
         let fh = FileHandler::new(Box::new(fsm)).await;
-        self.loghandle.handler.set_async_file_handler(fh.unwrap());
+        self.filehandle.0 = filename.to_string();
+        self.filehandle.1.set_async_file_handler(fh.unwrap());
         self
     }
 
     pub async fn set_cutmode_by_time(&mut self, filename: &str, mode: MODE, maxbackups: u32, compress: bool) -> &mut Self {
-        let ftm = FileTimeMode::new(filename, mode, maxbackups, compress);
+        let ftm = FileOptionType::new(crate::CUTMODE::TIME, mode, filename, 0, maxbackups, compress);
         let fh = FileHandler::new(Box::new(ftm)).await;
-        self.loghandle.handler.set_async_file_handler(fh.unwrap());
+        self.filehandle.0 = filename.to_string();
+        self.filehandle.1.set_async_file_handler(fh.unwrap());
         self
     }
 
     pub async fn set_option(&mut self, option: LogOption) -> &mut Self {
-        self.loghandle.async_set_option(option).await;
+        if let Some(v) = option.console {
+            self.fmthandle.set_console(v);
+        }
+        if let Some(v) = option.format {
+            self.fmthandle.set_format(v);
+        }
+        if let Some(v) = option.formatter {
+            self.fmthandle.set_formatter(v);
+        }
+        if let Some(v) = option.level {
+            self.fmthandle.set_level(v);
+        }
+        if let Some(v) = option.fileoption {
+            match FileHandler::new(v).await {
+                Ok(f) => {
+                    self.filehandle.0 = f.get_file_name();
+                    self.filehandle.1.set_async_file_handler(f);
+                }
+                Err(_) => {}
+            }
+        }
         self
     }
 
     pub async fn set_mod_option(&mut self, module: &str, option: LogOption) -> &mut Self {
-        let mut handler = Handle::new(None);
-        let ho = HasOption {
-            islevel: option.level.is_some(),
-            isformat: option.format.is_some(),
-            isformatter: option.formatter.is_some(),
-            isconsole: option.console.is_some(),
-            isfileoption: option.fileoption.is_some(),
-        };
-        handler.async_set_option(option).await;
-        self.modmap.insert(module.to_string(), (ho, handler));
+        let mut filename = "".to_string();
+        if let Some(v) = option.fileoption {
+            match FileHandler::new(v).await {
+                Ok(f) => {
+                    filename = f.get_file_name();
+                    if filename != self.filehandle.0 && !self.fmap.contains_key(&filename) {
+                        let mut fhandler = FHandler::new();
+                        fhandler.set_async_file_handler(f);
+                        self.fmap.insert(filename.clone(), fhandler);
+                    }
+                }
+                Err(_) => {}
+            }
+        }
+        self.modmap.insert(module.to_string(), (LogOption { level: option.level, format: option.format, formatter: option.formatter, console: option.console, fileoption: None }, filename.clone()));
         self
     }
 
@@ -247,8 +325,23 @@ impl Logger {
         self.custom_handler = Some(handler);
     }
 
-    pub fn set_level_option(&mut self, level: LEVEL, option: LevelOption) -> &mut Self {
-        self.levels[level as usize - 1] = Some(option);
+    pub async fn set_level_option(&mut self, level: LEVEL, option: &dyn OptionTrait) -> &mut Self {
+        let mut filename = "".to_string();
+        if let Some(v) = option.get_fileoption() {
+            match FileHandler::new(v).await {
+                Ok(f) => {
+                    filename = f.get_file_name();
+                    if filename != self.filehandle.0 && !self.fmap.contains_key(&filename) {
+                        let mut fhandler = FHandler::new();
+                        fhandler.set_async_file_handler(f);
+                        self.fmap.insert(filename.clone(), fhandler);
+                    }
+                }
+                Err(_) => {}
+            }
+        }
+        let lo = LogOption { level: None, format: option.get_format(), formatter: option.get_formatter(), console: option.get_console(), fileoption: option.get_fileoption() };
+        self.levels[level as usize - 1] = Some((lo, filename));
         self
     }
 
@@ -324,9 +417,9 @@ impl Log {
         self
     }
 
-    fn is_file_line(&self, module: &str) -> bool {
+    fn is_file_line(&self, level: LEVEL, module: &str) -> bool {
         unsafe {
-            return asynclog.is_file_line(module);
+            return asynclog.is_file_line(level, module);
         }
     }
 
@@ -344,9 +437,9 @@ impl Log {
         self
     }
 
-    pub fn set_level_option(&self, level: LEVEL, option: LevelOption) -> &Self {
+    pub async fn set_level_option(&self, level: LEVEL, option: impl OptionTrait) -> &Self {
         unsafe {
-            asynclog.set_level_option(level, option);
+            asynclog.set_level_option(level, &option).await;
         }
         self
     }
@@ -384,14 +477,14 @@ impl log::Log for Log {
         let args = record.args();
         let mut file = "";
         let mut line: u32 = 0;
-        if self.is_file_line(module) {
+        if self.is_file_line(level, module) {
             line = record.line().unwrap_or(0);
             file = record.file().unwrap_or("");
         }
         unsafe {
             let s = asynclog.fmt(module, level, file, line, arguments_to_string(args));
             if !s.is_empty() {
-                asynclog.log(module.to_string(), s);
+                asynclog.log(level, module.to_string(), s);
             }
         }
     }
@@ -400,11 +493,11 @@ impl log::Log for Log {
 
 #[macro_export]
 macro_rules! async_log {
-    ($module:expr,$msg:expr) => {
+    ($level:expr,$module:expr,$msg:expr) => {
         let msg: &str = $msg;
         let module: &str = $module;
         unsafe {
-            crate::tklog::asynclog.print(module, msg).await;
+            crate::tklog::asynclog.print($level, module, msg).await;
         }
     };
 }
@@ -466,7 +559,7 @@ macro_rules! async_log_common {
                 let formatted_args: Vec<String> = vec![$(format!("{}", $arg)),*];
                 let mut file = "";
                 let mut line = 0;
-                if $crate::tklog::asynclog.is_file_line(module) {
+                if $crate::tklog::asynclog.is_file_line($level,module) {
                     file = file!();
                     line = line!();
                 }
@@ -474,12 +567,12 @@ macro_rules! async_log_common {
                 if  $crate::tklog::asynclog.mode==$crate::PRINTMODE::DELAY {
                     let s = $crate::tklog::asynclog.fmt(module,$level, file, line, msg);
                     if !s.is_empty(){
-                        $crate::tklog::asynclog.log(module.to_string(),s);
+                        $crate::tklog::asynclog.log($level,module.to_string(),s);
                     }
                 }else {
                     let s = $crate::tklog::asynclog.fmt(module,$level, file, line, msg);
                     if !s.is_empty(){
-                        $crate::tklog::asynclog.safeprint(module,s.as_str()).await;
+                        $crate::tklog::asynclog.safeprint($level,module,s.as_str()).await;
                     }
                 }
             }
