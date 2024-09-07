@@ -26,10 +26,7 @@ use chrono::{DateTime, Local};
 use once_cell::sync::Lazy;
 use regex::Regex;
 
-use crate::{
-    getbackup_with_time, gzip, handle::FileOption, passtimemode, threadPool::ThreadPool, timesec,
-    ErrCode, CUTMODE, MODE,
-};
+use crate::{getbackup_with_time, gzip, handle::FileOption, passtimemode, threadPool::ThreadPool, timesec, ErrCode, CUTMODE, MODE};
 
 pub struct FileHandler {
     filename: String, //Log file path
@@ -45,7 +42,7 @@ pub struct FileHandler {
 
 impl FileHandler {
     pub fn new(option: Box<dyn FileOption>) -> Result<Self, Error> {
-        let fo = &*option;
+        let fo = option;
         let filename = fo.filename();
         let log_path = Path::new(&filename);
         let _ = mkdirs(log_path);
@@ -77,6 +74,10 @@ impl FileHandler {
         Ok(fh)
     }
 
+    pub fn get_file_name(&self) -> String {
+        self.filename.clone()
+    }
+
     pub fn new_from_clone(&mut self) -> io::Result<()> {
         let filename = self.filename.clone();
         let log_path = Path::new(&filename);
@@ -94,12 +95,7 @@ impl FileHandler {
     fn rename(&self) -> io::Result<()> {
         let log_path = Path::new(&self.filename);
         match self.cutmode {
-            CUTMODE::TIME => rename(
-                &log_path,
-                self.compress,
-                self.max_backups,
-                Some(getbackup_with_time(self.startsec, self.timemode)),
-            ),
+            CUTMODE::TIME => rename(&log_path, self.compress, self.max_backups, Some(getbackup_with_time(self.startsec, self.timemode))),
             CUTMODE::SIZE => rename(&log_path, self.compress, self.max_backups, None),
         }
     }
@@ -129,9 +125,7 @@ impl FileHandler {
 }
 
 fn mkdirs(dir_path: &Path) -> io::Result<()> {
-    let parent_dir = dir_path
-        .parent()
-        .ok_or_else(|| Error::new(ErrorKind::Other, ErrCode::NotFound.to_string()))?;
+    let parent_dir = dir_path.parent().ok_or_else(|| Error::new(ErrorKind::Other, ErrCode::NotFound.to_string()))?;
     if !parent_dir.exists() {
         fs::create_dir_all(parent_dir)?;
     }
@@ -140,24 +134,13 @@ fn mkdirs(dir_path: &Path) -> io::Result<()> {
 
 static POOL: Lazy<ThreadPool> = Lazy::new(|| ThreadPool::new(4));
 
-fn rename(
-    log_path: &Path,
-    compress: bool,
-    maxbackup: u32,
-    backupsuffix: Option<String>,
-) -> io::Result<()> {
+fn rename(log_path: &Path, compress: bool, maxbackup: u32, backupsuffix: Option<String>) -> io::Result<()> {
     let mut counter = 1;
     let file_stem = log_path.file_stem().unwrap_or_else(|| OsStr::new("tklog"));
-    let extension = log_path
-        .extension()
-        .map_or("", |e| e.to_str().unwrap())
-        .to_owned();
+    let extension = log_path.extension().map_or("", |e| e.to_str().unwrap()).to_owned();
     let mut maxloop = 1 << 20;
     while maxloop > 0 {
-        let mut parent = log_path
-            .parent()
-            .ok_or_else(|| Error::new(ErrorKind::Other, ErrCode::NotFound.to_string()))?
-            .to_path_buf();
+        let mut parent = log_path.parent().ok_or_else(|| Error::new(ErrorKind::Other, ErrCode::NotFound.to_string()))?.to_path_buf();
 
         if parent.as_os_str().is_empty() {
             if let Ok(current_dir) = env::current_dir() {
@@ -175,13 +158,7 @@ fn rename(
         let new_name: String;
 
         if backupsuffix.is_some() {
-            new_name = format!(
-                "{}_{}_{}{}",
-                file_stem.to_string_lossy(),
-                backupsuffix.as_ref().unwrap(),
-                counter,
-                suffix
-            );
+            new_name = format!("{}_{}_{}{}", file_stem.to_string_lossy(), backupsuffix.as_ref().unwrap(), counter, suffix);
         } else {
             new_name = format!("{}_{}{}", file_stem.to_string_lossy(), counter, suffix);
         }
@@ -213,12 +190,7 @@ fn rename(
     Ok(())
 }
 
-fn filter_files(
-    dir_path: &Path,
-    extension: String,
-    filename: String,
-    maxbackup: u32,
-) -> io::Result<Vec<PathBuf>> {
+fn filter_files(dir_path: &Path, extension: String, filename: String, maxbackup: u32) -> io::Result<Vec<PathBuf>> {
     let mut files = Vec::new();
     let mut sortvec = Vec::new();
     for entry in fs::read_dir(dir_path)? {
@@ -228,11 +200,7 @@ fn filter_files(
             continue;
         }
         let md = entry.metadata()?;
-        let sec = md
-            .modified()?
-            .duration_since(std::time::UNIX_EPOCH)
-            .expect("")
-            .as_secs();
+        let sec = md.modified()?.duration_since(std::time::UNIX_EPOCH).expect("").as_secs();
 
         if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
             let mut suffix = String::new();
@@ -240,10 +208,7 @@ fn filter_files(
                 suffix.push_str("\\.");
                 suffix.push_str(extension.as_str());
             }
-            let parrent = format!(
-                "{}{}{}{}{}{}",
-                "^", filename, "(_\\d+){0,}", "_\\d+", suffix, "(\\.gz){0,}$"
-            );
+            let parrent = format!("{}{}{}{}{}{}", "^", filename, "(_\\d+){0,}", "_\\d+", suffix, "(\\.gz){0,}$");
             let re = Regex::new(parrent.as_str()).unwrap();
             if re.is_match(file_name) {
                 sortvec.push((sec, path.clone()))
@@ -265,12 +230,7 @@ fn delete_files(files: Vec<PathBuf>) -> io::Result<()> {
     })
 }
 
-fn maxbackup_with_size(
-    parant: &PathBuf,
-    extension: String,
-    filename: String,
-    maxbackup: u32,
-) -> io::Result<()> {
+fn maxbackup_with_size(parant: &PathBuf, extension: String, filename: String, maxbackup: u32) -> io::Result<()> {
     let matched_files = filter_files(parant, extension, filename, maxbackup)?;
     delete_files(matched_files)
 }
