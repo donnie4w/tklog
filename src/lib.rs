@@ -26,6 +26,7 @@ use flate2::{
     write::{GzEncoder, ZlibEncoder},
     Compression,
 };
+use handle::FileOptionType;
 use once_cell::sync::Lazy;
 use tokio::io::AsyncReadExt;
 #[allow(non_snake_case)]
@@ -44,6 +45,14 @@ pub enum DateType {
     Microseconds,
 }
 
+pub trait OptionTrait {
+    fn get_level(&self) -> Option<LEVEL>;
+    fn get_format(&self) -> Option<u8>;
+    fn get_formatter(&self) -> Option<String>;
+    fn get_console(&self) -> Option<bool>;
+    fn get_fileoption(&self) -> Option<Box<dyn handle::FileOption>>;
+}
+
 pub struct LogOption {
     pub level: Option<LEVEL>,
     pub format: Option<u8>,
@@ -52,25 +61,73 @@ pub struct LogOption {
     pub fileoption: Option<Box<dyn handle::FileOption>>,
 }
 
-struct HasOption {
-    pub islevel: bool,
-    pub isformat: bool,
-    pub isformatter: bool,
-    pub isconsole: bool,
-    pub isfileoption: bool,
+impl OptionTrait for LogOption {
+    fn get_level(&self) -> Option<LEVEL> {
+        Some(LEVEL::Trace)
+    }
+
+    fn get_format(&self) -> Option<u8> {
+        self.format
+    }
+
+    fn get_formatter(&self) -> Option<String> {
+        self.formatter.clone()
+    }
+
+    fn get_console(&self) -> Option<bool> {
+        self.console
+    }
+
+    fn get_fileoption(&self) -> Option<Box<dyn handle::FileOption>> {
+        if let Some(fo) = &self.fileoption {
+            return Some(Box::new(FileOptionType { mode: fo.mode(), timemode: fo.timemode(), filename: fo.filename().clone(), size: fo.size(), maxbackups: fo.maxbackups(), compress: fo.compress() }));
+        }
+        None
+    }
 }
+
+// struct HasOption {
+//     pub islevel: bool,
+//     pub isformat: bool,
+//     pub isformatter: bool,
+//     pub isconsole: bool,
+//     pub isfileoption: bool,
+// }
 
 pub struct LogContext {
     pub level: LEVEL,
     pub log_body: String,
     pub filename: String,
     pub line: u32,
-    pub modname:String
+    pub modname: String,
 }
 
-pub  struct LevelOption{
+pub struct LevelOption {
     pub format: Option<u8>,
     pub formatter: Option<String>,
+}
+
+impl OptionTrait for LevelOption {
+
+    fn get_level(&self) -> Option<LEVEL> {
+        Some(LEVEL::Trace)
+    }
+
+    fn get_format(&self) -> Option<u8> {
+        self.format
+    }
+
+    fn get_formatter(&self) -> Option<String> {
+        self.formatter.clone()
+    }
+
+    fn get_console(&self) -> Option<bool> {
+        None
+    }
+
+    fn get_fileoption(&self) -> Option<Box<dyn handle::FileOption>> {
+        None
+    }
 }
 
 #[allow(non_upper_case_globals, non_snake_case)]
