@@ -92,6 +92,10 @@ impl FileHandler {
         OpenOptions::new().append(true).create(true).open(filename).await
     }
 
+    pub fn get_file_name(&self) -> String {
+        self.filename.clone()
+    }
+
     async fn rename(&self) -> io::Result<()> {
         let log_path = Path::new(&self.filename);
         match self.cutmode {
