@@ -23,7 +23,7 @@
 
 ```rust
 [dependencies]
-tklog = "0.1.0"   #   "0.x.x" current version
+tklog = "0.2.0"   #   "0.x.x" current version
 ```
 
 最简单常用的方式：**直接调用**
@@ -643,6 +643,9 @@ fn testlog() {
 
 ###### tklog 通过 `set_level_option()` 设置日志级别的独立日志参数
 
+###### `set_level_option()` 接收 任意实现 `OptionTrait`特征的对象
+
+##### 示例1 ：参数 `LevelOption` 对象，可以设置日志格式化输出
 
 ```rust
 #[test]
@@ -672,6 +675,27 @@ fn testlog() {
 [ERROR] 2024-08-24 15:06:02 test_0100.rs 20:this is error log
 [FATAL] 2024-08-24 this is fatal log
 ```
+
+##### 示例2  参数 `LogOption` 对象，可以设置更多参数，包括设置日志文件
+
+```rust
+#[test]
+fn testlog() {
+    LOG.set_level_option(LEVEL::Info, LogOption { format: Some(Format::LevelFlag), formatter: None, level:None, console: None, fileoption: Some(Box::new(FileTimeMode::new("0200time.log", tklog::MODE::DAY, 0, false))) })
+    .set_level_option(LEVEL::Fatal, LogOption { format: Some(Format::LevelFlag | Format::Date), formatter: None, level: None, console: None, fileoption: Some(Box::new(FileSizeMode::new("0200size.log", 1<<10, 0, false)))});
+
+    trace!("this is trace log");
+    debug!("this is debug log");
+    info!("this is info log");
+    warn!("this is warn log");
+    error!("this is error log");
+    fatal!("this is fatal log");
+    thread::sleep(Duration::from_secs(1))
+}
+```
+**示例说明：**
+1. Info级别的文件日志设置为按天分隔，文件名 `0200time.log`
+2. Fatal级别的文件日志设置为按大小分隔，文件名 `0200size.log`
 
 ------------
 
