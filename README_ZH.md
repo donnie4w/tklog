@@ -14,8 +14,13 @@
 - 文件压缩功能：支持对归档日志文件进行压缩
 - 支持官方日志库标准API
 - 支持按模块设置独立日志参数
+- 支持按日志级别设置独立日志参数
 
 ### [官网](https://tlnet.top/tklog "官网")
+
+### [Github](https://github.com/donnie4w/tklog "Github")
+
+### [仓库](https://crates.io/crates/tklog "仓库")
 
 ## 使用方法简述
 
@@ -82,8 +87,7 @@ fn testmutlilog() {
     log.set_console(true)
         .set_level(LEVEL::Debug) //定义日志级别为Debug
         .set_cutmode_by_time("tklogs.log", MODE::DAY, 10, true)   //分割日志文件的方式为按天分割，保留最多10个备份，并压缩备份文件
-        .set_formatter("{message} | {time} {file}{level}
-");  //自定义日志结构信息的输入顺序与附加内容
+        .set_formatter("{message} | {time} {file}{level}\n");  //自定义日志结构信息的输入顺序与附加内容
     let mut logger = Arc::clone(&Arc::new(Mutex::new(log)));
     let log = logger.borrow_mut();
     traces!(log, "traces>>>>", "AAAAAAAAA", 1, 2, 3, 4);
@@ -104,7 +108,7 @@ warns>>>>,DDDDDDDDDD,1,2,3,6 | 2024-05-26 14:13:25 testlog.rs 72[WARN]
 errors>>>>,EEEEEEEE,1,2,3,7 | 2024-05-26 14:13:25 testlog.rs 73[ERROR]
 fatals>>>>,FFFFFFFF,1,2,3,8 | 2024-05-26 14:13:25 testlog.rs 74[FATAL]
 ```
-###### 注意：以上输入结构化信息由 "{message} | {time} {file}{level} "   formatter决定。formatter中除了关键标识 `{message}`  `{time}`  `{file}`  `{level}` 外，其他内容原样输出，如 | ， 空格，换行  等。
+###### 注意：以上输入结构化信息由 "{message} | {time} {file}{level} \n"   formatter决定。formatter中除了关键标识 `{message}`  `{time}`  `{file}`  `{level}` 外，其他内容原样输出，如 | ， 空格，换行  等。
 
 
 ------------
@@ -145,7 +149,7 @@ fatals>>>>,FFFFFFFF,1,2,3,8 | 2024-05-26 14:13:25 testlog.rs 74[FATAL]
 - {message}      日志内容
 
 
-	LOG.set_formatter("{message} | {time} {file}{level}");  //自定义日志结构信息的输入顺序与附加内容
+	LOG.set_formatter("{message} | {time} {file}{level} \n");  //自定义日志结构信息的输入顺序与附加内容
 
 ###### 说明：除了关键标识 {message}  {time}  {file}  {level} 外，其他内容原样输出，如 | ， 空格，换行  等。
 
@@ -279,8 +283,7 @@ async fn testmultilogs() {
         .set_level(LEVEL::Debug)
         .set_cutmode_by_time("tklogasync.log", MODE::DAY, 10, true) 
         .await
-        .set_formatter("{message} | {time} {file}{level}
-");
+        .set_formatter("{message} | {time} {file}{level}\n");
     let mut logger = Arc::clone(&Arc::new(Mutex::new(log)));
     let log = logger.borrow_mut();
     async_traces!(log, "async_traces>>>>", "AAAAAAAAAA", 1, 2, 3);
@@ -694,8 +697,8 @@ fn testlog() {
 }
 ```
 **示例说明：**
-1. Info级别的文件日志设置为按天分隔，文件名 `0200time.log`
-2. Fatal级别的文件日志设置为按大小分隔，文件名 `0200size.log`
+1. Info级别的文件日志设置为按天分割，文件名 `0200time.log`
+2. Fatal级别的文件日志设置为按大小分割，文件名 `0200size.log`
 
 ------------
 
