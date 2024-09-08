@@ -12,8 +12,14 @@
 - File rolling mechanism that automatically deletes older log files once a maximum backup count is reached to prevent excess logs from accumulating.
 - Compression of archived backup log files.
 - Supports the official log library standard API
+- Independent log parameters can be set by module
+- Independent log parameters can be set by log level
 
 ### [official website](https://tlnet.top/tklogen "official website")
+
+### [Github](https://github.com/donnie4w/tklog "Github")
+
+### [crates.io](https://crates.io/crates/tklog "crates.io")
 
 ------------
 
@@ -23,7 +29,7 @@
 
 ```rust
 [dependencies]
-tklog = "0.1.0"   #   "0.x.x" current version
+tklog = "0.2.0"   #   "0.x.x" current version
 ```
 
 The simplest way to use tklog involves direct macro calls:
