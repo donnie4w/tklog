@@ -19,7 +19,8 @@ use std::collections::HashMap;
 use crate::asyncfile::FileHandler;
 use crate::handle::{FHandler, FileOptionType, FmtHandler};
 use crate::tklog::asynclog;
-use crate::{arguments_to_string, l2tk, log_fmt, Format, LogContext, LogOption, OptionTrait, LEVEL, MODE, PRINTMODE, TKLOG2ASYNC_LOG};
+use crate::trie::Trie;
+use crate::{arguments_to_string, l2tk, log_fmt, Format, LogContext, LogOption, LogOptionConst, OptionTrait, LEVEL, MODE, PRINTMODE, TKLOG2ASYNC_LOG};
 use tokio::sync::mpsc;
 
 /// this is the tklog encapsulated Logger whose File operations
@@ -49,7 +50,7 @@ pub struct Logger {
     filehandle: (String, FHandler),
     mutex: tokio::sync::Mutex<u32>,
     pub mode: PRINTMODE,
-    modmap: HashMap<String, (LogOption, String)>,
+    modmap: Trie<(LogOptionConst, String)>,
     fmap: HashMap<String, FHandler>,
     custom_handler: Option<fn(&LogContext) -> bool>,
     separator: String,
@@ -57,7 +58,6 @@ pub struct Logger {
 }
 
 impl Logger {
-
     pub fn new() -> Self {
         let (sender, mut receiver) = mpsc::unbounded_channel();
         tokio::spawn(async move {
@@ -74,7 +74,7 @@ impl Logger {
             filehandle: ("".to_string(), FHandler::new()),
             mutex: tokio::sync::Mutex::new(0),
             mode: PRINTMODE::DELAY,
-            modmap: HashMap::new(),
+            modmap: Trie::new(),
             fmap: HashMap::new(),
             custom_handler: None,
             separator: "".to_string(),
@@ -84,9 +84,8 @@ impl Logger {
 
     pub async fn print(&mut self, level: LEVEL, module: &str, message: &str) {
         let mut console = self.fmthandle.get_console();
-
         if module != "" && self.modmap.len() > 0 {
-            if let Some(mm) = self.modmap.get_mut(module) {
+            if let Some(mm) = self.modmap.get(module) {
                 let (lo, filename) = mm;
                 if let Some(cs) = lo.console {
                     console = cs
@@ -95,7 +94,7 @@ impl Logger {
                     if *filename == self.filehandle.0 {
                         let _ = self.filehandle.1.async_print(console, message).await;
                     } else {
-                        if let Some(fm) = self.fmap.get_mut(filename) {
+                        if let Some(fm) = self.fmap.get_mut(&filename) {
                             let _ = fm.async_print(console, message).await;
                         }
                     }
@@ -124,10 +123,10 @@ impl Logger {
     }
 
     pub async fn safeprint(&mut self, level: LEVEL, module: &str, message: &str) {
+        let _mutex_guard = self.mutex.lock().await;
         let mut console = self.fmthandle.get_console();
-        let _ = &self.mutex.lock().await;
         if module != "" && self.modmap.len() > 0 {
-            if let Some(mm) = self.modmap.get_mut(module) {
+            if let Some(mm) = self.modmap.get(module) {
                 let (lo, filename) = mm;
                 if let Some(cs) = lo.console {
                     console = cs
@@ -136,7 +135,7 @@ impl Logger {
                     if *filename == self.filehandle.0 {
                         let _ = self.filehandle.1.async_print(console, message).await;
                     } else {
-                        if let Some(fm) = self.fmap.get_mut(filename) {
+                        if let Some(fm) = self.fmap.get_mut(&filename) {
                             let _ = fm.async_print(console, message).await;
                         }
                     }
@@ -168,7 +167,7 @@ impl Logger {
         self.sender.send((level, module, message)).expect("send error");
     }
 
-    pub fn get_level(&self, module: &str) -> LEVEL {
+    pub fn get_level(&mut self, module: &str) -> LEVEL {
         if module != "" && self.modmap.len() > 0 {
             if let Some(mm) = self.modmap.get(module) {
                 let (lo, _) = mm;
@@ -180,7 +179,7 @@ impl Logger {
         self.fmthandle.get_level()
     }
 
-    pub fn is_file_line(&self, level: LEVEL, module: &str) -> bool {
+    pub fn is_file_line(&mut self, level: LEVEL, module: &str) -> bool {
         if let Some(lp) = &self.levels[level as usize - 1] {
             let (lo, _) = lp;
             if let Some(v) = lo.format {
@@ -208,7 +207,7 @@ impl Logger {
             }
         }
         let mut fmat = self.fmthandle.get_format();
-        let mut formatter = &self.fmthandle.get_formatter();
+        let mut formatter = self.fmthandle.get_formatter();
         if module != "" && self.modmap.len() > 0 {
             if let Some(mm) = self.modmap.get(module) {
                 let (lo, _) = mm;
@@ -216,7 +215,7 @@ impl Logger {
                     fmat = v;
                 }
                 if let Some(v) = &lo.formatter {
-                    formatter = v;
+                    formatter = v.clone();
                 }
             }
         }
@@ -227,7 +226,7 @@ impl Logger {
                 fmat = v;
             }
             if let Some(v) = &lo.formatter {
-                formatter = v;
+                formatter = v.clone();
             }
         }
 
@@ -317,7 +316,7 @@ impl Logger {
                 Err(_) => {}
             }
         }
-        self.modmap.insert(module.to_string(), (LogOption { level: option.level, format: option.format, formatter: option.formatter, console: option.console, fileoption: None }, filename.clone()));
+        self.modmap.insert(module, (LogOptionConst { level: option.level, format: option.format, formatter: option.formatter, console: option.console }, filename.clone()));
         self
     }
 
