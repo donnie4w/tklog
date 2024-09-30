@@ -37,6 +37,7 @@ pub mod handle;
 pub mod sync;
 pub mod syncfile;
 pub mod syncmulti;
+mod trie;
 #[allow(non_snake_case)]
 mod threadPool;
 pub enum DateType {
@@ -84,6 +85,15 @@ impl OptionTrait for LogOption {
         }
         None
     }
+}
+
+
+#[derive(Clone)]
+pub struct LogOptionConst {
+    pub level: Option<LEVEL>,
+    pub format: Option<u8>,
+    pub formatter: Option<String>,
+    pub console: Option<bool>,
 }
 
 // struct HasOption {
