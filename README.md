@@ -29,7 +29,7 @@
 
 ```rust
 [dependencies]
-tklog = "0.2.0"   #   "0.x.x" current version
+tklog = "0.2.1"   #   "0.x.x" current version
 ```
 
 The simplest way to use tklog involves direct macro calls:
@@ -405,13 +405,22 @@ async fn test_synclog() {
 - fileoption		file log setting
 
 
-#####  `set_mod_option` File log setting：
+#####  `set_mod_option` example：
 
 	tklog::LOG.set_mod_option("testlog::module1",LogOption{level:Some(LEVEL::Debug),console: Some(false),format:None,formatter:None,fileoption: Some(Box::new(FileTimeMode::new("day.log", tklog::MODE::DAY, 0,true)))});
 
 
 - `testlog::module1` is the module name，you can use  `module_path!()`  to print out the current module name
 - When tklog is used in the module `testlog::module1`, tklog will use the LogOption object
+
+#####  `set_mod_option` example2：
+
+	tklog::LOG.set_mod_option("testlog::*",LogOption{level:Some(LEVEL::Debug),console: Some(false),format:None,formatter:None,fileoption: Some(Box::new(FileTimeMode::new("day.log", tklog::MODE::DAY, 0,true)))});
+
+
+-  `testlog::*`: tklog supports using * to match all submodules. testlog::* indicates all submodules of testlog.
+- `testlog::module1::*` indicates all submodules of `testlog::module1`
+
 
 #### Complete mod example
 
@@ -420,11 +429,9 @@ mod module1 {
     use std::{thread, time::Duration};
     use tklog::{handle::FileTimeMode, LogOption, LEVEL};
     pub fn testmod() {
-        tklog::LOG.set_mod_option("testlog::module1", LogOption { level: Some(LEVEL::Debug), format: None, formatter: None, console: None, fileoption: Some(Box::new(FileTimeMode::new("module1.log", tklog::MODE::DAY, 0, true))) }).uselog();
+        tklog::LOG.set_mod_option("testlog::module1", LogOption { level: Some(LEVEL::Debug), format: None, formatter: None, console: None, fileoption: Some(Box::new(FileTimeMode::new("module1.log", tklog::MODE::DAY, 0, true))) });
         tklog::debug!("module1,tklog api,LOG debug log>>", 123);
         tklog::info!("module1,tklog api,LOG info log>>", 456);
-        log::debug!("module1,log api,debug log>>{}", 111);
-        log::info!("module1,log api,info log>>{}", 222);
         thread::sleep(Duration::from_secs(1))
     }
 }
@@ -433,19 +440,21 @@ mod module2 {
     use std::{thread, time::Duration};
     use tklog::{handle::FileTimeMode, LogOption, LEVEL};
     pub fn testmod() {
-        tklog::LOG.set_mod_option("testlog::module2", LogOption { level: Some(LEVEL::Info), format: None, formatter: None, console: None, fileoption: Some(Box::new(FileTimeMode::new("module2.log", tklog::MODE::DAY, 0, true))) }).uselog();
-        tklog::debug!("module2,tklog api,LOG debug log>>", 123);
-        tklog::info!("module2,tklog api,LOG info log>>", 456);
-        log::debug!("module2,log api,debug log>>{}", 111);
-        log::info!("module2,log api,info log>>{}", 222);
-        thread::sleep(Duration::from_secs(1))
+        tklog::LOG.set_mod_option("testlog::module2::*", LogOption { level: Some(LEVEL::Info), format: None, formatter: None, console: None, fileoption: Some(Box::new(FileTimeMode::new("module2.log", tklog::MODE::DAY, 0, true))) });
+    }
+    mod m2 {
+        pub fn testmod() {
+            tklog::debug!("module2,tklog api,LOG debug log>>", 123);
+            tklog::info!("module2,tklog api,LOG info log>>", 456);
+            thread::sleep(Duration::from_secs(1))
+        }
     }
 }
 
 #[test]
 fn testmod2() {
     module1::testmod();
-    module2::testmod();
+    module2::m2::testmod();
 }
 ```
 
