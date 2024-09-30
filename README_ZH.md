@@ -28,7 +28,7 @@
 
 ```rust
 [dependencies]
-tklog = "0.2.0"   #   "0.x.x" current version
+tklog = "0.2.1"   #   "0.x.x" current version
 ```
 
 最简单常用的方式：**直接调用**
@@ -390,6 +390,14 @@ async fn test_synclog() {
 - `testlog::module1` 为设置的模块名，可以通过rust内置宏  `module_path!()`  打印出当前模块名
 - 当tklog在模块 `testlog::module1` 中使用时，将tklog将使用该LogOption对象
 
+#####  `set_mod_option` 示例2：
+
+	tklog::LOG.set_mod_option("testlog::*",LogOption{level:Some(LEVEL::Debug),console: Some(false),format:None,formatter:None,fileoption: Some(Box::new(FileTimeMode::new("day.log", tklog::MODE::DAY, 0,true)))});
+
+
+- `testlog::*` tklog支持用*匹配所有子模块，`testlog::*`表示`testlog`的所有子模块
+- `testlog::module1::*` 表示`testlog::module1`的所有子模块
+
 #### 完整的mod示例
 
 ```rust
@@ -397,11 +405,9 @@ mod module1 {
     use std::{thread, time::Duration};
     use tklog::{handle::FileTimeMode, LogOption, LEVEL};
     pub fn testmod() {
-        tklog::LOG.set_mod_option("testlog::module1", LogOption { level: Some(LEVEL::Debug), format: None, formatter: None, console: None, fileoption: Some(Box::new(FileTimeMode::new("module1.log", tklog::MODE::DAY, 0, true))) }).uselog();
+        tklog::LOG.set_mod_option("testlog::module1", LogOption { level: Some(LEVEL::Debug), format: None, formatter: None, console: None, fileoption: Some(Box::new(FileTimeMode::new("module1.log", tklog::MODE::DAY, 0, true))) });
         tklog::debug!("module1,tklog api,LOG debug log>>", 123);
         tklog::info!("module1,tklog api,LOG info log>>", 456);
-        log::debug!("module1,log api,debug log>>{}", 111);
-        log::info!("module1,log api,info log>>{}", 222);
         thread::sleep(Duration::from_secs(1))
     }
 }
@@ -410,19 +416,21 @@ mod module2 {
     use std::{thread, time::Duration};
     use tklog::{handle::FileTimeMode, LogOption, LEVEL};
     pub fn testmod() {
-        tklog::LOG.set_mod_option("testlog::module2", LogOption { level: Some(LEVEL::Info), format: None, formatter: None, console: None, fileoption: Some(Box::new(FileTimeMode::new("module2.log", tklog::MODE::DAY, 0, true))) }).uselog();
-        tklog::debug!("module2,tklog api,LOG debug log>>", 123);
-        tklog::info!("module2,tklog api,LOG info log>>", 456);
-        log::debug!("module2,log api,debug log>>{}", 111);
-        log::info!("module2,log api,info log>>{}", 222);
-        thread::sleep(Duration::from_secs(1))
+        tklog::LOG.set_mod_option("testlog::module2::*", LogOption { level: Some(LEVEL::Info), format: None, formatter: None, console: None, fileoption: Some(Box::new(FileTimeMode::new("module2.log", tklog::MODE::DAY, 0, true))) });
+    }
+    mod m2 {
+        pub fn testmod() {
+            tklog::debug!("module2,tklog api,LOG debug log>>", 123);
+            tklog::info!("module2,tklog api,LOG info log>>", 456);
+            thread::sleep(Duration::from_secs(1))
+        }
     }
 }
 
 #[test]
 fn testmod2() {
     module1::testmod();
-    module2::testmod();
+    module2::m2::testmod();
 }
 ```
 ##### 执行结果
