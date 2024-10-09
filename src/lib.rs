@@ -104,6 +104,7 @@ pub struct LogOptionConst {
 //     pub isfileoption: bool,
 // }
 
+#[derive(Clone)]
 pub struct LogContext {
     pub level: LEVEL,
     pub log_body: String,
