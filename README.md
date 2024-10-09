@@ -29,7 +29,7 @@
 
 ```rust
 [dependencies]
-tklog = "0.2.1"   #   "0.x.x" current version
+tklog = "0.2.2"   #   "0.x.x" current version
 ```
 
 The simplest way to use tklog involves direct macro calls:
