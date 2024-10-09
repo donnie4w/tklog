@@ -94,7 +94,7 @@ impl Logger {
                     if *filename == self.filehandle.0 {
                         let _ = self.filehandle.1.async_print(console, message).await;
                     } else {
-                        if let Some(fm) = self.fmap.get_mut(&filename) {
+                        if let Some(fm) = self.fmap.get_mut(filename) {
                             let _ = fm.async_print(console, message).await;
                         }
                     }
@@ -135,7 +135,7 @@ impl Logger {
                     if *filename == self.filehandle.0 {
                         let _ = self.filehandle.1.async_print(console, message).await;
                     } else {
-                        if let Some(fm) = self.fmap.get_mut(&filename) {
+                        if let Some(fm) = self.fmap.get_mut(filename) {
                             let _ = fm.async_print(console, message).await;
                         }
                     }
@@ -215,7 +215,7 @@ impl Logger {
                     fmat = v;
                 }
                 if let Some(v) = &lo.formatter {
-                    formatter = v.clone();
+                    formatter = v.to_string();
                 }
             }
         }
@@ -226,7 +226,7 @@ impl Logger {
                 fmat = v;
             }
             if let Some(v) = &lo.formatter {
-                formatter = v.clone();
+                formatter = v.to_string();
             }
         }
 
