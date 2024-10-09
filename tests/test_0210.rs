@@ -67,6 +67,7 @@ mod module4 {
 #[tokio::test]
 async fn testasyncmod() {
     tklog::ASYNC_LOG.set_mod_option("test_0210::module3::*", LogOption { level: None, format: None, formatter: None, console: Some(true), fileoption: Some(Box::new(FileTimeMode::new("asyncmodule2.log", tklog::MODE::DAY, 0, true))) }).await;
+    tklog::ASYNC_LOG.set_mod_option("test_0210::module4", LogOption { level: None, format: None, formatter: None, console: Some(true), fileoption: Some(Box::new(FileTimeMode::new("asyncmodule2.log", tklog::MODE::DAY, 0, true))) }).await;
     module3::testmod().await;
     module3::m3::testmod().await;
     module3::m4::testmod().await;
