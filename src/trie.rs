@@ -59,9 +59,9 @@ impl<V: Clone> Trie<V> {
         self.count += 1;
     }
 
-    pub fn get(&mut self, input: &str) -> Option<V> {
-        if let Some(cached_result) = self.cache.get(input) {
-            return cached_result.clone();
+    pub fn get(&mut self, input: &str) -> Option<&V> {
+        if self.cache.contains_key(input) {
+            return  self.cache.get(input).and_then(|opt|opt.as_ref());
         }
         let segments: Vec<&str> = input.split("::").collect();
         let mut node = &self.root;
@@ -81,8 +81,9 @@ impl<V: Clone> Trie<V> {
                 break;
             }
         }
-        let result = last_matched_module.cloned();
-        self.cache.insert(input.to_string(), result.clone());
-        result
+        if let Some(v) = last_matched_module {
+            self.cache.insert(input.to_string(), Some(v.clone()));
+        }
+        self.cache.get(input).and_then(|opt| opt.as_ref())
     }
 }
