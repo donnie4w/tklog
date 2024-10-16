@@ -150,6 +150,7 @@ pub mod Format {
     pub const LongFileName: u8 = 8;
     pub const ShortFileName: u8 = 16;
     pub const LevelFlag: u8 = 32;
+    pub const LevelFlagNoBracket: u8 = 64;
 }
 
 #[derive(PartialEq, PartialOrd, Clone, Copy, Debug)]
@@ -338,6 +339,16 @@ fn log_fmt(fmat: u8, formatter: &str, level: LEVEL, filename: &str, line: u32, m
             LEVEL::Warn => "[WARN]",
             LEVEL::Error => "[ERROR]",
             LEVEL::Fatal => "[FATAL]",
+            LEVEL::Off => "",
+        };
+    } else if fmat & Format::LevelFlagNoBracket != 0 {
+        levelflag = match level {
+            LEVEL::Trace => "TRACE",
+            LEVEL::Debug => "DEBUG",
+            LEVEL::Info => "INFO",
+            LEVEL::Warn => "WARN",
+            LEVEL::Error => "ERROR",
+            LEVEL::Fatal => "FATAL",
             LEVEL::Off => "",
         };
     }
