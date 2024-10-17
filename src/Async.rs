@@ -20,7 +20,7 @@ use crate::asyncfile::FileHandler;
 use crate::handle::{FHandler, FileOptionType, FmtHandler};
 use crate::tklog::asynclog;
 use crate::trie::Trie;
-use crate::{arguments_to_string, l2tk, log_fmt, Format, LogContext, LogOption, LogOptionConst, OptionTrait, LEVEL, MODE, PRINTMODE, TKLOG2ASYNC_LOG};
+use crate::{arguments_to_string, l2tk, log_fmt, Format, LogContext, AttrFormat, LogOption, LogOptionConst, OptionTrait, LEVEL, MODE, PRINTMODE, TKLOG2ASYNC_LOG};
 use tokio::sync::mpsc;
 
 /// this is the tklog encapsulated Logger whose File operations
@@ -55,6 +55,9 @@ pub struct Logger {
     custom_handler: Option<fn(&LogContext) -> bool>,
     separator: String,
     levels: [Option<(LogOption, String)>; 7],
+    // levelfmt: Option<Box<dyn Fn(LEVEL) -> String + Send + Sync>>,
+    // timefmt: Option<Box<dyn Fn() -> (String, String, String) + Send + Sync>>,
+    attrfmt: AttrFormat,
 }
 
 impl Logger {
@@ -79,6 +82,9 @@ impl Logger {
             custom_handler: None,
             separator: "".to_string(),
             levels: std::array::from_fn(|_| None),
+            // levelfmt: None,
+            // timefmt: None,
+            attrfmt: AttrFormat::new(),
         }
     }
 
@@ -230,7 +236,7 @@ impl Logger {
             }
         }
 
-        log_fmt(fmat, formatter.as_str(), level, filename, line, message)
+        log_fmt(self.attrfmt.levelfmt.as_ref(), self.attrfmt.timefmt.as_ref(), fmat, formatter.as_str(), level, filename, line, message)
     }
 
     pub fn set_printmode(&mut self, mode: PRINTMODE) -> &mut Self {
@@ -352,6 +358,13 @@ impl Logger {
     pub fn get_separator(&self) -> String {
         self.separator.clone()
     }
+
+    pub fn set_attr_format<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&mut AttrFormat) + Send + Sync + 'static,
+    {
+        f(&mut self.attrfmt);
+    }
 }
 
 pub struct Log;
@@ -454,6 +467,15 @@ impl Log {
         let _ = log::set_logger(&TKLOG2ASYNC_LOG);
         log::set_max_level(log::LevelFilter::Trace);
         self
+    }
+
+    pub fn set_attr_format<F>(&self, f: F)
+    where
+        F: FnMut(&mut AttrFormat) + Send + Sync + 'static,
+    {
+        unsafe {
+            asynclog.set_attr_format(f);
+        }
     }
 }
 
