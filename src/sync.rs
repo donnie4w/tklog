@@ -15,7 +15,13 @@
 // limitations under the License.
 
 use crate::{
-    arguments_to_string, handle::{FHandler, FileOptionType, FmtHandler}, l2tk, log_fmt, syncfile::FileHandler, tklog::synclog, trie::Trie, Format, LogContext, LogOption, LogOptionConst, OptionTrait, LEVEL, MODE, PRINTMODE, TKLOG2SYNCLOG
+    arguments_to_string,
+    handle::{FHandler, FileOptionType, FmtHandler},
+    l2tk, log_fmt,
+    syncfile::FileHandler,
+    tklog::synclog,
+    trie::Trie,
+    AttrFormat, Format, LogContext, LogOption, LogOptionConst, OptionTrait, LEVEL, MODE, PRINTMODE, TKLOG2SYNCLOG,
 };
 use std::thread;
 use std::{
@@ -56,6 +62,9 @@ pub struct Logger {
     custom_handler: Option<fn(&LogContext) -> bool>,
     separator: String,
     levels: [Option<(LogOption, String)>; 7],
+    // levelfmt: Option<Box<dyn Fn(LEVEL) -> String + Send + Sync>>,
+    // timefmt: Option<Box<dyn Fn() -> (String, String, String) + Send + Sync>>,
+    attrfmt: AttrFormat,
 }
 
 impl Logger {
@@ -80,6 +89,9 @@ impl Logger {
             custom_handler: None,
             separator: "".to_string(),
             levels: std::array::from_fn(|_| None),
+            // levelfmt: None,
+            // timefmt: None,
+            attrfmt: AttrFormat::new(),
         }
     }
 
@@ -231,7 +243,7 @@ impl Logger {
             }
         }
 
-        log_fmt(fmat, formatter.as_str(), level, filename, line, message)
+        log_fmt(self.attrfmt.levelfmt.as_ref(), self.attrfmt.timefmt.as_ref(), fmat, formatter.as_str(), level, filename, line, message)
     }
 
     pub fn set_printmode(&mut self, mode: PRINTMODE) -> &mut Self {
@@ -262,7 +274,6 @@ impl Logger {
     }
 
     pub fn set_cutmode_by_size(&mut self, filename: &str, maxsize: u64, maxbackups: u32, compress: bool) -> &mut Self {
-        // let fsm = FileSizeMode::new(filename, maxsize, maxbackups, compress);
         let fsm = FileOptionType::new(crate::CUTMODE::SIZE, MODE::DAY, filename, maxsize, maxbackups, compress);
         let fh = FileHandler::new(Box::new(fsm));
         self.filehandle.0 = filename.to_string();
@@ -355,6 +366,27 @@ impl Logger {
 
     pub fn get_separator(&self) -> String {
         self.separator.clone()
+    }
+
+    // pub fn set_levelfmt<F>(&mut self, levelfmt: F)
+    // where
+    //     F: Fn(LEVEL) -> String + Send + Sync + 'static,
+    // {
+    //     self.levelfmt = Some(Box::new(levelfmt));
+    // }
+
+    // pub fn set_timefmt<F>(&mut self, timefmt: F)
+    // where
+    //     F: Fn() -> (String, String, String) + Send + Sync + 'static,
+    // {
+    //     self.timefmt = Some(Box::new(timefmt));
+    // }
+
+    pub fn set_attr_format<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&mut AttrFormat) + Send + Sync + 'static,
+    {
+        f(&mut self.attrfmt);
     }
 }
 
@@ -460,6 +492,29 @@ impl Log {
         let _ = log::set_logger(&TKLOG2SYNCLOG);
         log::set_max_level(log::LevelFilter::Trace);
         self
+    }
+
+    // pub fn set_levelfmt<F>(&self, levelfmt: F)
+    // where
+    //     F: Fn(LEVEL) -> String + Send + Sync + 'static,
+    // {
+    //     unsafe { synclog.set_levelfmt(levelfmt) };
+    // }
+
+    // pub fn set_timefmt<F>(&self, timefmt: F)
+    // where
+    //     F: Fn() -> (String, String, String) + Send + Sync + 'static,
+    // {
+    //     unsafe { synclog.set_timefmt(timefmt) };
+    // }
+
+    pub fn set_attr_format<F>(&self, f: F)
+    where
+        F: FnMut(&mut AttrFormat) + Send + Sync + 'static,
+    {
+        unsafe {
+            synclog.set_attr_format(f);
+        }
     }
 }
 
