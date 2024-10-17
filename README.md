@@ -29,7 +29,7 @@
 
 ```rust
 [dependencies]
-tklog = "0.2.2"   #   "0.x.x" current version
+tklog = "0.2.3"   #   "0.x.x" current version
 ```
 
 The simplest way to use tklog involves direct macro calls:
@@ -739,6 +739,53 @@ fn testlog() {
 
 1. The file logs at the Info level are separated by day and the file name is 0200time.log
 2. The file logs of the Fatal level are separated by size and the file name is 0200sisie.log
+
+------------
+
+## tklog supports formatting settings for log attribute identifiers
+
+##### Set log identifier and time format through the `set_attr_format` function
+
+##### Example:
+
+```rust
+fn testlog() {
+    tklog::LOG.set_attr_format(|fmt| {
+        fmt.set_level_fmt(|level| {
+            match level {
+                LEVEL::Trace => "[T]",
+                LEVEL::Debug => "[D]",
+                LEVEL::Info => "[I]",
+                LEVEL::Warn => "[W]",
+                LEVEL::Error => "[E]",
+                LEVEL::Fatal => "[F]",
+                LEVEL::Off => "",
+            }.to_string()
+        });
+
+        fmt.set_time_fmt(|| {
+            let now: DateTime<Local> = Local::now();
+            (now.format("%Y/%m/%d").to_string(), now.format("%H:%M:%S").to_string(), "".to_string())
+        });
+    });
+
+    trace!("trace!", "this is sync log");
+    debug!("debug!","this is sync log");
+    info!("info!","this is sync log");
+    warn!("warn!","this is sync log");
+    error!("error!","this is sync log");
+    fatal!("fata!","this is sync log");
+    thread::sleep(Duration::from_secs(1))
+}
+```
+###### Execution Result
+```text
+[D] 2024/10/17 19:41:20 test_0230.rs 32:debug!this is sync log
+[I] 2024/10/17 19:41:20 test_0230.rs 33:info!this is sync log
+[W] 2024/10/17 19:41:20 test_0230.rs 34:warn!this is sync log
+[E] 2024/10/17 19:41:20 test_0230.rs 35:error!this is sync log
+[F] 2024/10/17 19:41:20 test_0230.rs 36:fata!this is sync log
+```
 
 ------------
 
