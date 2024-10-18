@@ -378,6 +378,40 @@ impl Log {
         self
     }
 
+    pub fn set_level_from_env(&self) -> &Self {
+        if let Ok(v) = std::env::var("LOG_LEVEL") {
+            match v.to_lowercase().as_str() {
+                "trace" => {
+                    unsafe {
+                        synclog.set_level(LEVEL::Trace);
+                    }
+                }
+                "debug" => {
+                    unsafe {
+                        synclog.set_level(LEVEL::Debug);
+                    }
+                }
+                "info" => {
+                    unsafe {
+                        synclog.set_level(LEVEL::Info);
+                    }
+                }
+                "warn" => {
+                    unsafe {
+                        synclog.set_level(LEVEL::Warn);
+                    }
+                }
+                "error" => {
+                    unsafe {
+                        synclog.set_level(LEVEL::Error);
+                    }
+                }
+                _ => {}
+            }
+        }
+        self
+    }
+
     pub fn set_console(&self, console: bool) -> &Self {
         unsafe {
             synclog.set_console(console);
