@@ -28,7 +28,7 @@
 
 ```rust
 [dependencies]
-tklog = "0.2.2"   #   "0.x.x" current version
+tklog = "0.2.3"   #   "0.x.x" current version
 ```
 
 最简单常用的方式：**直接调用**
@@ -707,6 +707,54 @@ fn testlog() {
 **示例说明：**
 1. Info级别的文件日志设置为按天分割，文件名 `0200time.log`
 2. Fatal级别的文件日志设置为按大小分割，文件名 `0200size.log`
+
+------------
+
+## tklog 支持对日志属性标识进行格式化设置
+
+##### 通过 `set_attr_format` 函数设置日志标识与时间格式
+
+##### 示例：
+
+```rust
+fn testlog() {
+    tklog::LOG.set_attr_format(|fmt| {
+        fmt.set_level_fmt(|level| {
+            match level {
+                LEVEL::Trace => "[T]",
+                LEVEL::Debug => "[D]",
+                LEVEL::Info => "[I]",
+                LEVEL::Warn => "[W]",
+                LEVEL::Error => "[E]",
+                LEVEL::Fatal => "[F]",
+                LEVEL::Off => "",
+            }.to_string()
+        });
+
+        fmt.set_time_fmt(|| {
+            let now: DateTime<Local> = Local::now();
+            (now.format("%Y/%m/%d").to_string(), now.format("%H:%M:%S").to_string(), "".to_string())
+        });
+
+    });
+
+    trace!("trace!", "this is sync log");
+    debug!("debug!","this is sync log");
+    info!("info!","this is sync log");
+    warn!("warn!","this is sync log");
+    error!("error!","this is sync log");
+    fatal!("fata!","this is sync log");
+    thread::sleep(Duration::from_secs(1))
+}
+```
+##### 执行结果：
+```text
+[D] 2024/10/17 19:41:20 test_0230.rs 32:debug!this is sync log
+[I] 2024/10/17 19:41:20 test_0230.rs 33:info!this is sync log
+[W] 2024/10/17 19:41:20 test_0230.rs 34:warn!this is sync log
+[E] 2024/10/17 19:41:20 test_0230.rs 35:error!this is sync log
+[F] 2024/10/17 19:41:20 test_0230.rs 36:fata!this is sync log
+```
 
 ------------
 
