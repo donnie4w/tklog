@@ -37,6 +37,7 @@ pub mod handle;
 pub mod sync;
 pub mod syncfile;
 pub mod syncmulti;
+pub mod mwrite;
 #[allow(non_snake_case)]
 mod threadPool;
 mod trie;
@@ -153,7 +154,9 @@ impl ErrCode {
     }
 }
 
-const DEFAULT_FORMATTER: &str = "{level}{time} {file}:{message}\n";
+// const DEFAULT_FORMATTER: &str = "{level}{time} {file}:{message}\n";
+
+// const MWRITE: Lazy<mwrite::MWrite> = Lazy::new(|| mwrite::MWrite::new());
 
 pub const LOG: Lazy<sync::Log> = Lazy::new(|| sync::Log::new());
 
@@ -211,9 +214,31 @@ pub enum CUTMODE {
     SIZE,
 }
 
-fn timenow() -> (String, String, String) {
-    let now: DateTime<Local> = Local::now();
-    (now.format("%Y-%m-%d").to_string(), now.format("%H:%M:%S").to_string(), now.format("%.6f").to_string())
+// fn timenow() -> (String, String, String) {
+//     let now: DateTime<Local> = Local::now();
+//     (now.format("%Y-%m-%d").to_string(), now.format("%H:%M:%S").to_string(), now.format("%.6f").to_string())
+// }
+
+// fn timenow() -> Vec<String> {
+//     let now: DateTime<Local> = Local::now();
+//     let full_format = now.format("%Y-%m-%d|%H:%M:%S|%.6f").to_string();
+//     full_format.split('|').map(|s| s.to_string()).collect()
+// }
+
+fn now() -> DateTime<Local> {
+    Local::now()
+}
+
+fn datefmt(now: DateTime<Local>) -> String {
+    format!("{:04}-{:02}-{:02}", now.year(), now.month(), now.day())
+}
+
+fn datetimefmt(now: DateTime<Local>) -> String {
+    format!("{:02}:{:02}:{:02}", now.hour(), now.minute(), now.second())
+}
+
+fn microsecondfmt(now: DateTime<Local>) -> String {
+    format!("{:06}", now.nanosecond() / 1_000)
 }
 
 #[allow(dead_code)]
@@ -264,7 +289,7 @@ async fn async_gzip(filename: &str) -> io::Result<()> {
 }
 
 fn parse_and_format_log(format_str: &str, level: &str, time: &str, file: &str, message: &str) -> String {
-    let mut result = String::new();
+    let mut result = String::with_capacity(format_str.len() + level.len() + time.len() + file.len() + message.len());
     let mut in_placeholder = false;
     let mut placeholder = String::new();
 
@@ -310,13 +335,13 @@ fn getbackup_with_time(startsec: u64, timemode: MODE) -> String {
     }
 }
 
-fn log_fmt<LF, TF>(levelfmt: Option<LF>, timefmt: Option<TF>, fmat: u8, formatter: &str, level: LEVEL, filename: &str, line: u32, msg: String) -> String
+fn log_fmt<LF, TF>(levelfmt: Option<LF>, timefmt: Option<TF>, fmat: u8, formatter: Option<&String>, level: LEVEL, filename: &str, line: u32, msg: &str) -> String
 where
     LF: Fn(LEVEL) -> String,
     TF: Fn() -> (String, String, String),
 {
     if fmat == Format::Nano {
-        return msg;
+        return msg.to_string();
     }
 
     let mut levelflag = String::new();
@@ -341,23 +366,44 @@ where
     }
 
     if fmat & (Format::Date | Format::Time | Format::Microseconds) != 0 {
-        let tss: (String, String, String);
+        let mut tss: (String, String, String);
         if let Some(f) = timefmt {
             tss = f();
+            if fmat & Format::Date != 0 {
+                tss.0.clear();
+            }
+            if fmat & Format::Time != 0 {
+                tss.1.clear();
+            }
+            if fmat & Format::Microseconds != 0 {
+                tss.2.clear();
+            }
         } else {
-            tss = timenow();
+            let localtime = now();
+            tss = (String::new(), String::new(), String::new());
+            if fmat & Format::Date != 0 {
+                tss.0 = datefmt(localtime);
+            }
+            if fmat & (Format::Time | Format::Microseconds) != 0 {
+                tss.1 = datetimefmt(localtime);
+                if fmat & Format::Microseconds != 0 {
+                    tss.2 = microsecondfmt(localtime);
+                }
+            }
         }
-        if fmat & Format::Date != 0 {
+        if !tss.0.is_empty() {
             time.push_str(tss.0.as_str());
         }
-        if fmat & (Format::Time | Format::Microseconds) != 0 {
-            if !time.is_empty() && !tss.1.is_empty() {
+
+        if !tss.1.is_empty() {
+            if !time.is_empty() {
                 time.push(' ');
             }
             time.push_str(tss.1.as_str());
-            if fmat & Format::Microseconds != 0 {
-                time.push_str(tss.2.as_str());
-            }
+        }
+
+        if !tss.2.is_empty() {
+            time.push_str(tss.2.as_str());
         }
     }
     if fmat & (Format::LongFileName | Format::ShortFileName) != 0 {
@@ -370,8 +416,8 @@ where
         file.push_str(line.to_string().as_str());
     }
 
-    if formatter.eq(DEFAULT_FORMATTER) {
-        let mut r = String::new();
+    if formatter.is_none() {
+        let mut r = String::with_capacity(levelflag.len() + time.len() + file.len() + msg.len() + 4);
         if !levelflag.is_empty() {
             r.push_str(&levelflag);
         }
@@ -379,16 +425,18 @@ where
             r.push(' ');
             r.push_str(&time);
         }
+        r.push(' ');
         if !file.is_empty() {
-            r.push(' ');
             r.push_str(&file);
             r.push(':');
         }
+
         r.push_str(&msg);
         r.push('\n');
         return r;
     } else {
-        return parse_and_format_log(formatter, levelflag.as_str(), time.as_str(), file.as_str(), msg.as_str());
+        let fmts = formatter.unwrap();
+        return parse_and_format_log(fmts.as_str(), levelflag.as_str(), time.as_str(), file.as_str(), msg);
     }
 }
 
@@ -438,11 +486,12 @@ fn arguments_to_string(args: &std::fmt::Arguments) -> String {
 pub struct AttrFormat {
     levelfmt: Option<Box<dyn Fn(LEVEL) -> String + Send + Sync>>,
     timefmt: Option<Box<dyn Fn() -> (String, String, String) + Send + Sync>>,
+    bodyfmt: Option<Box<dyn Fn(LEVEL, String) -> String + Send + Sync>>,
 }
 
 impl AttrFormat {
     pub fn new() -> AttrFormat {
-        AttrFormat { levelfmt: None, timefmt: None }
+        AttrFormat { levelfmt: None, timefmt: None, bodyfmt: None }
     }
 
     /// ### Exmaple
@@ -467,7 +516,7 @@ impl AttrFormat {
         self.levelfmt = Some(Box::new(levelfmt));
     }
 
-    /// - This function splits a date into three parts and returns a tuple (String, String, String). 
+    /// - This function splits a date into three parts and returns a tuple (String, String, String).
     /// - You can customize the data for these three parts.
     /// #### Generally,
     /// - the first part is the date in the format `%Y-%m-%d`,
@@ -485,5 +534,29 @@ impl AttrFormat {
         F: Fn() -> (String, String, String) + Send + Sync + 'static,
     {
         self.timefmt = Some(Box::new(timefmt));
+    }
+
+
+    /// ### This function will support the reprocessing of log information
+    /// 
+    /// ### Example
+    /// ```rust
+    /// fmt.set_body_fmt(|level,body| {
+    ///     match level {
+    ///         LEVEL::Trace =>  format!("{}{}{}","\x1b[34m" ,body,"\x1b[0m") , //blue
+    ///         LEVEL::Debug => format!("{}{}{}","\x1b[36m" ,body,"\x1b[0m") , //cyan
+    ///         LEVEL::Info => format!("{}{}{}","\x1b[32m" ,body,"\x1b[0m") ,  //green
+    ///         LEVEL::Warn => format!("{}{}{}","\x1b[33m" ,body,"\x1b[0m") ,  //yellow
+    ///         LEVEL::Error => format!("{}{}{}","\x1b[31m" ,body,"\x1b[0m") , //red
+    ///         LEVEL::Fatal => format!("{}{}{}","\x1b[41m" ,body,"\x1b[0m") , //red-background
+    ///         LEVEL::Off => "".to_string(),
+    ///     }
+    /// });
+    /// ```
+    pub fn set_body_fmt<F>(&mut self, bodyfmt: F)
+    where
+        F: Fn(LEVEL, String) -> String + Send + Sync + 'static,
+    {
+        self.bodyfmt = Some(Box::new(bodyfmt));
     }
 }
