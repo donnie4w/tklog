@@ -15,13 +15,7 @@
 // limitations under the License.
 
 use crate::{
-    arguments_to_string,
-    handle::{FHandler, FileOptionType, FmtHandler},
-    l2tk, log_fmt,
-    syncfile::FileHandler,
-    tklog::synclog,
-    trie::Trie,
-    AttrFormat, Format, LogContext, LogOption, LogOptionConst, OptionTrait, LEVEL, MODE, PRINTMODE, TKLOG2SYNCLOG,
+    arguments_to_string, handle::{FHandler, FileOptionType, FmtHandler}, l2tk, log_fmt, syncfile::FileHandler, tklog::synclog, trie::Trie, AttrFormat, Format, LogContext, LogOption, LogOptionConst, OptionTrait, LEVEL, MODE, PRINTMODE, TKLOG2SYNCLOG
 };
 use std::thread;
 use std::{
@@ -227,8 +221,8 @@ impl Logger {
                 if let Some(v) = lo.format {
                     fmat = v;
                 }
-                if let Some(v) = &lo.formatter {
-                    formatter = v.to_string();
+                if lo.formatter.is_some() {
+                    formatter = lo.formatter.as_ref();
                 }
             }
         }
@@ -238,12 +232,16 @@ impl Logger {
             if let Some(v) = lo.format {
                 fmat = v;
             }
-            if let Some(v) = &lo.formatter {
-                formatter = v.to_string();
+            if lo.formatter.is_some() {
+                formatter = lo.formatter.as_ref();
             }
         }
-
-        log_fmt(self.attrfmt.levelfmt.as_ref(), self.attrfmt.timefmt.as_ref(), fmat, formatter.as_str(), level, filename, line, message)
+        let s = log_fmt(self.attrfmt.levelfmt.as_ref(),self.attrfmt.timefmt.as_ref(),fmat, formatter, level, filename, line, message.as_str());
+        if let Some(f) = &self.attrfmt.bodyfmt{
+            f(level,s)
+        }else{
+            s
+        }
     }
 
     pub fn set_printmode(&mut self, mode: PRINTMODE) -> &mut Self {
