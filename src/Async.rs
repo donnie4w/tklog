@@ -20,7 +20,7 @@ use crate::asyncfile::FileHandler;
 use crate::handle::{FHandler, FileOptionType, FmtHandler};
 use crate::tklog::asynclog;
 use crate::trie::Trie;
-use crate::{arguments_to_string, l2tk, log_fmt, Format, LogContext, AttrFormat, LogOption, LogOptionConst, OptionTrait, LEVEL, MODE, PRINTMODE, TKLOG2ASYNC_LOG};
+use crate::{arguments_to_string, l2tk, log_fmt, AttrFormat, Format, LogContext, LogOption, LogOptionConst, OptionTrait, LEVEL, MODE, PRINTMODE, TKLOG2ASYNC_LOG};
 use tokio::sync::mpsc;
 
 /// this is the tklog encapsulated Logger whose File operations
@@ -220,8 +220,8 @@ impl Logger {
                 if let Some(v) = lo.format {
                     fmat = v;
                 }
-                if let Some(v) = &lo.formatter {
-                    formatter = v.to_string();
+                if lo.formatter.is_some() {
+                    formatter = lo.formatter.as_ref();
                 }
             }
         }
@@ -231,12 +231,17 @@ impl Logger {
             if let Some(v) = lo.format {
                 fmat = v;
             }
-            if let Some(v) = &lo.formatter {
-                formatter = v.to_string();
+            if lo.formatter.is_some() {
+                formatter = lo.formatter.as_ref();
             }
         }
 
-        log_fmt(self.attrfmt.levelfmt.as_ref(), self.attrfmt.timefmt.as_ref(), fmat, formatter.as_str(), level, filename, line, message)
+        let s = log_fmt(self.attrfmt.levelfmt.as_ref(), self.attrfmt.timefmt.as_ref(), fmat, formatter, level, filename, line, message.as_str());
+        if let Some(f) = &self.attrfmt.bodyfmt {
+            f(level, s)
+        } else {
+            s
+        }
     }
 
     pub fn set_printmode(&mut self, mode: PRINTMODE) -> &mut Self {
