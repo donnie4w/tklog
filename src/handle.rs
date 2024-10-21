@@ -18,7 +18,7 @@ use std::io;
 
 use tokio::io::AsyncWriteExt;
 
-use crate::{asyncfile, syncfile, Format, CUTMODE, DEFAULT_FORMATTER, LEVEL, MODE};
+use crate::{asyncfile, syncfile, Format, CUTMODE, LEVEL, MODE};
 
 pub trait FileOption: Send + Sync {
     fn mode(&self) -> CUTMODE;
@@ -152,13 +152,13 @@ pub struct FmtHandler {
     level: LEVEL,  // log level
     format: u8,    // log format
     console: bool, // log console
-    formatter: String, // log formatter
+    formatter: Option<String>, // log formatter
 }
 
 impl FmtHandler {
     pub fn new() -> Self {
         let f = Format::LevelFlag | Format::Date | Format::Time | Format::ShortFileName;
-        FmtHandler { level: LEVEL::Debug, format: f, console: true, formatter: DEFAULT_FORMATTER.to_string() }
+        FmtHandler { level: LEVEL::Debug, format: f, console: true, formatter:None }
     }
 
 
@@ -189,11 +189,11 @@ impl FmtHandler {
 
     /** default: "{level}{time} {file}:{message}\n" */
     pub fn set_formatter(&mut self, formatter: String) {
-        self.formatter = formatter;
+        self.formatter = Some(formatter);
     }
 
-    pub fn get_formatter(&self)->String{
-        self.formatter.clone()
+    pub fn get_formatter(&self)->Option<&String>{
+        self.formatter.as_ref()
     }
 
 
