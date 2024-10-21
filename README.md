@@ -29,7 +29,7 @@
 
 ```rust
 [dependencies]
-tklog = "0.2.3"   #   "0.x.x" current version
+tklog = "0.2.4"   #   "0.x.x" current version
 ```
 
 The simplest way to use tklog involves direct macro calls:
@@ -767,6 +767,26 @@ fn testlog() {
             let now: DateTime<Local> = Local::now();
             (now.format("%Y/%m/%d").to_string(), now.format("%H:%M:%S").to_string(), "".to_string())
         });
+
+
+        fmt.set_body_fmt(|level, body| {
+            //Handles the last newline character of the body
+            let trimmed_body = if body.ends_with('\n') {
+                format!("{}{}", body.as_str()[..body.len() - 1].to_string(), "\x1b[0m\n")
+            } else {
+                format!("{}{}", body, "\x1b[0m\n")
+            };
+
+            match level {
+                LEVEL::Trace => format!("{}{}", "\x1b[34m", trimmed_body), //blue
+                LEVEL::Debug => format!("{}{}", "\x1b[36m", trimmed_body), //cyan
+                LEVEL::Info => format!("{}{}", "\x1b[32m", trimmed_body),  //green
+                LEVEL::Warn => format!("{}{}", "\x1b[33m", trimmed_body),  //yellow
+                LEVEL::Error => format!("{}{}", "\x1b[31m", trimmed_body), //red
+                LEVEL::Fatal => format!("{}{}", "\x1b[41m", trimmed_body), //background red
+                LEVEL::Off => "".to_string(),
+            }
+        });
     });
 
     trace!("trace!", "this is sync log");
@@ -791,39 +811,102 @@ fn testlog() {
 
 ## Benchmark Test
 
-```text
-log_benchmark           time:   [2.9703 µs 2.9977 µs 3.0256 µs]
-                        change: [-95.539% -95.413% -95.268%] (p = 0.00 < 0.05)
-                        Performance has improved.
-Found 9 outliers among 100 measurements (9.00%)
-  4 (4.00%) high mild
-  5 (5.00%) high severe
-```
-```text
-log_benchmark           time:   [2.9685 µs 3.0198 µs 3.0678 µs]
-                        change: [-3.6839% -1.2170% +1.0120%] (p = 0.34 > 0.05)
+
+```test
+log_benchmark           time:   [2.3949 µs 2.4428 µs 2.4941 µs]
+                        change: [-0.5586% +1.9685% +4.4040%] (p = 0.14 > 0.05)
+                        No change in performance detected.
+Found 3 outliers among 100 measurements (3.00%)
+  1 (1.00%) high mild
+  2 (2.00%) high severe
+
+mod_benchmark           time:   [2.1946 µs 2.2325 µs 2.2718 µs]
+                        change: [-2.5723% +0.0728% +2.8784%] (p = 0.96 > 0.05)
                         No change in performance detected.
 Found 7 outliers among 100 measurements (7.00%)
-  7 (7.00%) high mild
+  3 (3.00%) high mild
+  4 (4.00%) high severe
 ```
-
 
 ```text
-test_debug              time:   [3.3747 µs 3.4599 µs 3.5367 µs]
-                        change: [-69.185% -68.009% -66.664%] (p = 0.00 < 0.05)
+log_benchmark           time:   [2.3992 µs 2.4307 µs 2.4632 µs]
+                        change: [-12.388% -9.7287% -6.8751%] (p = 0.00 < 0.05)
                         Performance has improved.
-Found 9 outliers among 100 measurements (9.00%)
-  6 (6.00%) high mild
-  3 (3.00%) high severe
-```
-```rust
-test_debug              time:   [3.8377 µs 3.8881 µs 3.9408 µs]
-                        change: [-66.044% -65.200% -64.363%] (p = 0.00 < 0.05)
+Found 7 outliers among 100 measurements (7.00%)
+  1 (1.00%) low mild
+  5 (5.00%) high mild
+  1 (1.00%) high severe
+
+mod_benchmark           time:   [2.2126 µs 2.2508 µs 2.2920 µs]
+                        change: [-11.895% -9.0113% -6.2389%] (p = 0.00 < 0.05)
                         Performance has improved.
-Found 2 outliers among 100 measurements (2.00%)
-  2 (2.00%) high mild
+Found 6 outliers among 100 measurements (6.00%)
+  4 (4.00%) high mild
+  2 (2.00%) high severe
 ```
 
-###### Explanation: The time range gives three data points representing the minimum test execution time (2.9055 microseconds), the value near the average (2.9444microseconds-3.8881microseconds ), and the maximum (3.9408 microseconds).
+```text
+log_benchmark           time:   [2.4525 µs 2.5059 µs 2.5632 µs]
+                        change: [-10.548% -7.0786% -3.6963%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 3 outliers among 100 measurements (3.00%)
+  3 (3.00%) high mild
 
-**Conclusion: Log printing function performance: 2 µs /op - 3.9 µs /op (microsecond/time)**
+mod_benchmark           time:   [2.2603 µs 2.3113 µs 2.3693 µs]
+                        change: [-12.539% -9.5519% -6.4982%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 5 outliers among 100 measurements (5.00%)
+  4 (4.00%) high mild
+  1 (1.00%) high severe
+```
+
+```text
+log_benchmark           time:   [2.5650 µs 2.6194 µs 2.6775 µs]
+                        change: [-3.5311% -0.4742% +3.3119%] (p = 0.79 > 0.05)
+                        No change in performance detected.
+Found 6 outliers among 100 measurements (6.00%)
+  5 (5.00%) high mild
+  1 (1.00%) high severe
+
+mod_benchmark           time:   [2.4908 µs 2.5655 µs 2.6440 µs]
+                        change: [-1.3617% +1.9010% +5.2711%] (p = 0.29 > 0.05)
+                        No change in performance detected.
+Found 4 outliers among 100 measurements (4.00%)
+  4 (4.00%) high mild
+```
+
+##### **log_benchmark**
+| Test Number | Minimum Time (µs) | Maximum Time (µs) | Average Time (µs) | Percentage Change (%) | p-value |
+|-------------|--------------------|--------------------|--------------------|-----------------------|---------|
+| 1           | 2.3949             | 2.4941             | 2.4428             | -0.5586%              | 0.14    |
+| 2           | 2.3992             | 2.4632             | 2.4307             | -12.388%              | 0.00    |
+| 3           | 2.4525             | 2.5632             | 2.5059             | -10.548%              | 0.00    |
+| 4           | 2.5650             | 2.6775             | 2.6194             | -3.5311%              | 0.79    |
+
+##### **mod_benchmark**
+| Test Number | Minimum Time (µs) | Maximum Time (µs) | Average Time (µs) | Percentage Change (%) | p-value |
+|-------------|--------------------|--------------------|--------------------|-----------------------|---------|
+| 1           | 2.1946             | 2.2718             | 2.2325             | -2.5723%              | 0.96    |
+| 2           | 2.2126             | 2.2920             | 2.2508             | -11.895%              | 0.00    |
+| 3           | 2.2603             | 2.3693             | 2.3113             | -12.539%              | 0.00    |
+| 4           | 2.4908             | 2.6440             | 2.5655             | -1.3617%              | 0.29    |
+
+#### 2. **Summary Statistics**
+- **log_benchmark**
+  - **Minimum Time**: 2.3949 µs
+  - **Maximum Time**: 2.6775 µs
+  - **Average Time**: 2.5160 µs
+  - **Change Range**: From -0.5586% to -12.388%
+  - **p-value**: Most tests show significant results (p < 0.05).
+
+- **mod_benchmark**
+  - **Minimum Time**: 2.1946 µs
+  - **Maximum Time**: 2.6440 µs
+  - **Average Time**: 2.3430 µs
+  - **Change Range**: From -2.5723% to -12.539%
+  - **p-value**: Most tests show significant results (p < 0.05).
+
+### Performance Statistics (Response Times)
+1. Minimum Time: 2.1946 µs
+2. Maximum Time: 2.6775 µs
+3. Average Time: 2.3946 µs
