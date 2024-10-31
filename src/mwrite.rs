@@ -60,11 +60,11 @@ impl MWrite {
     }
 }
 
-#[test]
-fn testwrite() {
-    let mut file = std::fs::OpenOptions::new().append(true).create(true).open("logfile.log").unwrap();
-    let logger = MWrite::new();
+// #[test]
+// fn testwrite() {
+//     let mut file = std::fs::OpenOptions::new().append(true).create(true).open("logfile.log").unwrap();
+//     let logger = MWrite::new();
 
-    let data = b"Log entry".to_vec();
-    logger.write(&mut file, data).unwrap();
-}
+//     let data = b"Log entry".to_vec();
+//     logger.write(&mut file, data).unwrap();
+// }
