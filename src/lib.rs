@@ -15,10 +15,11 @@
 // limitations under the License.
 
 use std::{
-    fmt,
-    fmt::Debug,
+    env,
+    fmt::{self, Debug},
     fs::{self, File},
     io::{self, BufReader, BufWriter, Read, Write},
+    str::FromStr,
 };
 
 use chrono::{DateTime, Datelike, Local, NaiveDateTime, Timelike};
@@ -34,10 +35,10 @@ pub mod Async;
 pub mod asyncfile;
 pub mod asyncmulti;
 pub mod handle;
+mod mwrite;
 pub mod sync;
 pub mod syncfile;
 pub mod syncmulti;
-pub mod mwrite;
 #[allow(non_snake_case)]
 mod threadPool;
 mod trie;
@@ -61,6 +62,47 @@ pub struct LogOption {
     pub formatter: Option<String>,
     pub console: Option<bool>,
     pub fileoption: Option<Box<dyn handle::FileOption>>,
+}
+
+impl LogOption {
+    pub fn new() -> Self {
+        LogOption { level: None, format: None, formatter: None, console: None, fileoption: None }
+    }
+
+    pub fn set_format(&mut self, f: u8) -> &mut Self {
+        self.format = Some(f);
+        self
+    }
+
+    pub fn set_formatter(&mut self, f: String) -> &mut Self {
+        self.formatter = Some(f);
+        self
+    }
+
+    pub fn set_level(&mut self, level: LEVEL) -> &mut Self {
+        self.level = Some(level);
+        self
+    }
+
+    pub fn set_console(&mut self, console: bool) -> &mut Self {
+        self.console = Some(console);
+        self
+    }
+
+    pub fn set_fileoption(&mut self,  h:impl handle::FileOption + 'static) -> &mut Self {
+        self.fileoption = Some(Box::new(h));
+        self
+    }
+
+    pub fn take(&mut self) -> Self {
+        LogOption {
+            level: self.level.take(),
+            format: self.format.take(),
+            formatter: self.formatter.take(),
+            console: self.console.take(),
+            fileoption: self.fileoption.take(),
+        }
+    }
 }
 
 impl OptionTrait for LogOption {
@@ -155,7 +197,6 @@ impl ErrCode {
 }
 
 // const DEFAULT_FORMATTER: &str = "{level}{time} {file}:{message}\n";
-
 // const MWRITE: Lazy<mwrite::MWrite> = Lazy::new(|| mwrite::MWrite::new());
 
 pub const LOG: Lazy<sync::Log> = Lazy::new(|| sync::Log::new());
@@ -191,6 +232,36 @@ pub enum LEVEL {
     Error = 5,
     Fatal = 6,
     Off = 7,
+}
+
+impl FromStr for LEVEL {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "fatal" => Ok(LEVEL::Fatal),
+            "error" => Ok(LEVEL::Error),
+            "warn" => Ok(LEVEL::Warn),
+            "info" => Ok(LEVEL::Info),
+            "debug" => Ok(LEVEL::Debug),
+            "trace" => Ok(LEVEL::Trace),
+            "off" => Ok(LEVEL::Off),
+            _ => Err(()),
+        }
+    }
+}
+
+fn env_level() -> LEVEL {
+    if let Ok(rust_log) = env::var("RUST_LOG") {
+        match LEVEL::from_str(&rust_log) {
+            Ok(level) => level,
+            Err(_) => {
+                println!("Warning: Unknown log level '{}', defaulting to Debug", rust_log);
+                LEVEL::Debug
+            }
+        }
+    } else {
+        LEVEL::Debug
+    }
 }
 
 pub enum COLUMN {
@@ -536,9 +607,8 @@ impl AttrFormat {
         self.timefmt = Some(Box::new(timefmt));
     }
 
-
     /// ### This function will support the reprocessing of log information
-    /// 
+    ///
     /// ### Example
     /// ```rust
     /// fmt.set_body_fmt(|level,body| {
