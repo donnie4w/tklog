@@ -158,9 +158,8 @@ pub struct FmtHandler {
 impl FmtHandler {
     pub fn new() -> Self {
         let f = Format::LevelFlag | Format::Date | Format::Time | Format::ShortFileName;
-        FmtHandler { level: LEVEL::Debug, format: f, console: true, formatter:None }
+        FmtHandler { level:crate::env_level(), format: f, console: true, formatter:None }
     }
-
 
     pub async fn async_console(&self, s: &str) -> Result<(), Box<dyn std::error::Error>> {
         let mut stdout = tokio::io::stdout();
