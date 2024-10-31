@@ -14,6 +14,7 @@
 - Supports the official log library standard API
 - Independent log parameters can be set by module
 - Independent log parameters can be set by log level
+- The environment variable RUST_LOG is supported for setting the log level.
 
 ### [official website](https://tlnet.top/tklogen "official website")
 
@@ -29,7 +30,7 @@
 
 ```rust
 [dependencies]
-tklog = "0.2.4"   #   "0.x.x" current version
+tklog = "0.2.5"   #   "0.x.x" current version
 ```
 
 The simplest way to use tklog involves direct macro calls:
