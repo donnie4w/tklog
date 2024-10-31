@@ -15,6 +15,7 @@
 - 支持官方日志库标准API
 - 支持按模块设置独立日志参数
 - 支持按日志级别设置独立日志参数
+- 支持使用环境变量RUST_LOG 设置日志级别
 
 ### [官网](https://tlnet.top/tklog "官网")
 
@@ -28,7 +29,7 @@
 
 ```rust
 [dependencies]
-tklog = "0.2.4"   #   "0.x.x" current version
+tklog = "0.2.5"   #   "0.x.x" current version
 ```
 
 最简单常用的方式：**直接调用**
