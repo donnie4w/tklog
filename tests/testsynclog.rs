@@ -5,7 +5,13 @@ use std::{
     time::{Duration, Instant},
 };
 
-use tklog::{debug, debugs, error, errors, fatal, fatals, info, infos, sync::Logger, trace, traces, warn, warns, Format, LogContext, LEVEL, LOG, MODE};
+use tklog::{
+    debug, debugs, error, errors, fatal, fatals, info, infos,
+    sync::Logger,
+    trace, traces, warn, warns,
+    Format::{self},
+    LogContext, LEVEL, LOG, MODE,
+};
 
 fn log_init() {
     LOG.set_console(true)
@@ -21,7 +27,7 @@ fn testlog() {
     log_init();
     trace!("trace>>>>", "aaaaaaaaa", 1, 2, 3, 4);
     debug!("debug>>>>", "bbbbbbbbb", 1, 2, 3, 5);
-    LOG.set_separator("|");  //设置参数分隔符 | 
+    LOG.set_separator("|"); //设置参数分隔符 |
     info!("info>>>>", "ccccccccc", 1, 2, 3, 5);
     warn!("warn>>>>", "dddddddddd", 1, 2, 3, 6);
     LOG.set_separator(","); //设置参数分隔符 ，
@@ -87,8 +93,9 @@ fn testformats() {
 fn testlogssize() {
     let mut log = Logger::new();
     log.set_console(true).set_level(LEVEL::Debug).set_cutmode_by_size("tklogsize.log", 1 << 10, 10, false);
+    log.set_printmode(tklog::PRINTMODE::PUNCTUAL);
     let logger = Arc::new(Mutex::new(log));
-    let handles: Vec<_> = (0..10)
+    let handles: Vec<_> = (0..20)
         .map(|i| {
             let mut log = logger.clone();
             thread::spawn(move || {
@@ -103,6 +110,24 @@ fn testlogssize() {
     for handle in handles {
         handle.join().unwrap();
     }
+}
+
+#[test]
+fn testlogssize2() {
+    LOG.set_cutmode_by_size("tklogsize.log", 1 << 20, 0, false).set_console(false);
+    // LOG.set_printmode(tklog::PRINTMODE::PUNCTUAL);
+    for _ in 0..20 {
+        thread::scope(|s| {
+            for i in 0..100 {
+                s.spawn(move || {
+                    for _ in 0..10 {
+                        debug!("debug>>>>", "thread aaaaaaaaaaaaaaaaa>>", i);
+                    }
+                });
+            }
+        });
+    }
+    thread::sleep(Duration::from_secs(2));
 }
 
 #[test]
@@ -147,7 +172,6 @@ fn test_custom() {
     thread::sleep(Duration::from_secs(1))
 }
 
-
 #[test]
 fn test_custom_multi() {
     fn custom_handle(lc: &LogContext) -> bool {
@@ -162,7 +186,6 @@ fn test_custom_multi() {
         }
         true
     }
-
 
     let mut log = Logger::new();
     log.set_custom_handler(custom_handle);
