@@ -54,7 +54,7 @@ pub struct Logger {
     fmap: HashMap<String, FHandler>,
     custom_handler: Option<fn(&LogContext) -> bool>,
     separator: String,
-    levels: [Option<(LogOption, String)>; 7],
+    levels: Option<[Option<(LogOption, String)>; 7]>,
     // levelfmt: Option<Box<dyn Fn(LEVEL) -> String + Send + Sync>>,
     // timefmt: Option<Box<dyn Fn() -> (String, String, String) + Send + Sync>>,
     attrfmt: AttrFormat,
@@ -81,7 +81,7 @@ impl Logger {
             fmap: HashMap::new(),
             custom_handler: None,
             separator: "".to_string(),
-            levels: std::array::from_fn(|_| None),
+            levels: None,
             // levelfmt: None,
             // timefmt: None,
             attrfmt: AttrFormat::new(),
@@ -109,22 +109,25 @@ impl Logger {
             }
         }
 
-        if let Some(lp) = &mut self.levels[level as usize - 1] {
-            let (lo, filename) = lp;
-            if let Some(cs) = lo.console {
-                console = cs
-            }
-            if filename != "" {
-                if *filename == self.filehandle.0 {
-                    let _ = self.filehandle.1.async_print(console, message).await;
-                } else {
-                    if let Some(fm) = self.fmap.get_mut(filename) {
-                        let _ = fm.async_print(console, message).await;
-                    }
+        if let Some(levels) = &self.levels {
+            if let Some(lp) = &levels[level as usize - 1] {
+                let (lo, filename) = lp;
+                if let Some(cs) = lo.console {
+                    console = cs
                 }
-                return;
+                if filename != "" {
+                    if *filename == self.filehandle.0 {
+                        let _ = self.filehandle.1.async_print(console, message).await;
+                    } else {
+                        if let Some(fm) = self.fmap.get_mut(filename) {
+                            let _ = fm.async_print(console, message).await;
+                        }
+                    }
+                    return;
+                }
             }
         }
+
         let _ = self.filehandle.1.async_print(console, message).await;
     }
 
@@ -150,22 +153,25 @@ impl Logger {
             }
         }
 
-        if let Some(lp) = &mut self.levels[level as usize - 1] {
-            let (lo, filename) = lp;
-            if let Some(cs) = lo.console {
-                console = cs
-            }
-            if filename != "" {
-                if *filename == self.filehandle.0 {
-                    let _ = self.filehandle.1.async_print(console, message).await;
-                } else {
-                    if let Some(fm) = self.fmap.get_mut(filename) {
-                        let _ = fm.async_print(console, message).await;
-                    }
+        if let Some(levels) = &self.levels {
+            if let Some(lp) = &levels[level as usize - 1] {
+                let (lo, filename) = lp;
+                if let Some(cs) = lo.console {
+                    console = cs
                 }
-                return;
+                if filename != "" {
+                    if *filename == self.filehandle.0 {
+                        let _ = self.filehandle.1.async_print(console, message).await;
+                    } else {
+                        if let Some(fm) = self.fmap.get_mut(filename) {
+                            let _ = fm.async_print(console, message).await;
+                        }
+                    }
+                    return;
+                }
             }
         }
+
         let _ = self.filehandle.1.async_print(console, message).await;
     }
 
@@ -186,10 +192,12 @@ impl Logger {
     }
 
     pub fn is_file_line(&mut self, level: LEVEL, module: &str) -> bool {
-        if let Some(lp) = &self.levels[level as usize - 1] {
-            let (lo, _) = lp;
-            if let Some(v) = lo.format {
-                return v & (Format::LongFileName | Format::ShortFileName) != 0;
+        if let Some(levels) = &self.levels {
+            if let Some(lp) = &levels[level as usize - 1] {
+                let (lo, _) = lp;
+                if let Some(v) = lo.format {
+                    return v & (Format::LongFileName | Format::ShortFileName) != 0;
+                }
             }
         }
 
@@ -226,13 +234,15 @@ impl Logger {
             }
         }
 
-        if let Some(lp) = &self.levels[level as usize - 1] {
-            let (lo, _) = lp;
-            if let Some(v) = lo.format {
-                fmat = v;
-            }
-            if lo.formatter.is_some() {
-                formatter = lo.formatter.as_ref();
+        if let Some(levels) = &self.levels {
+            if let Some(lp) = &levels[level as usize - 1] {
+                let (lo, _) = lp;
+                if let Some(v) = lo.format {
+                    fmat = v;
+                }
+                if lo.formatter.is_some() {
+                    formatter = lo.formatter.as_ref();
+                }
             }
         }
 
@@ -351,7 +361,15 @@ impl Logger {
             }
         }
         let lo = LogOption { level: None, format: option.get_format(), formatter: option.get_formatter(), console: option.get_console(), fileoption: option.get_fileoption() };
-        self.levels[level as usize - 1] = Some((lo, filename));
+
+        if self.levels.is_none() {
+            self.levels = Some(std::array::from_fn(|_| None));
+        }
+        
+        if let Some(levels) = &mut self.levels {
+            levels[level as usize - 1] = Some((lo, filename));
+        }
+
         self
     }
 
