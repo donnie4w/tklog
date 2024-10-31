@@ -4,12 +4,13 @@ use tklog::{LEVEL, LOG};
 
 fn log_init() {
     LOG.set_level(LEVEL::Trace).set_console(false).set_cutmode_by_size("bench_log.log", 1 << 30, 0, false);
+    LOG.set_printmode(tklog::PRINTMODE::PUNCTUAL);
 }
 
 #[test]
 fn bench_log() {
     log_init();
-    let iterations = 1_000; // Total number of executions
+    let iterations = 10_000; // Total number of executions
     let batch_size = 10; // Number of logs in each batch
     let mut total_duration = Duration::new(0, 0); // Total time
 
