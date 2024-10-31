@@ -15,7 +15,13 @@
 // limitations under the License.
 
 use crate::{
-    arguments_to_string, handle::{FHandler, FileOptionType, FmtHandler}, l2tk, log_fmt, syncfile::FileHandler, tklog::synclog, trie::Trie, AttrFormat, Format, LogContext, LogOption, LogOptionConst, OptionTrait, LEVEL, MODE, PRINTMODE, TKLOG2SYNCLOG
+    arguments_to_string,
+    handle::{FHandler, FileOptionType, FmtHandler},
+    l2tk, log_fmt,
+    syncfile::FileHandler,
+    tklog::synclog,
+    trie::Trie,
+    AttrFormat, Format, LogContext, LogOption, LogOptionConst, OptionTrait, LEVEL, MODE, PRINTMODE, TKLOG2SYNCLOG,
 };
 use std::thread;
 use std::{
@@ -55,7 +61,7 @@ pub struct Logger {
     fmap: HashMap<String, FHandler>,
     custom_handler: Option<fn(&LogContext) -> bool>,
     separator: String,
-    levels: [Option<(LogOption, String)>; 7],
+    levels: Option<[Option<(LogOption, String)>; 7]>,
     // levelfmt: Option<Box<dyn Fn(LEVEL) -> String + Send + Sync>>,
     // timefmt: Option<Box<dyn Fn() -> (String, String, String) + Send + Sync>>,
     attrfmt: AttrFormat,
@@ -82,7 +88,7 @@ impl Logger {
             fmap: HashMap::new(),
             custom_handler: None,
             separator: "".to_string(),
-            levels: std::array::from_fn(|_| None),
+            levels: None,
             // levelfmt: None,
             // timefmt: None,
             attrfmt: AttrFormat::new(),
@@ -92,7 +98,7 @@ impl Logger {
     pub fn print(&mut self, level: LEVEL, module: &str, message: &str) {
         let mut console = self.fmthandle.get_console();
 
-        if module != "" && self.modmap.len() > 0 {
+        if self.modmap.len() > 0 {
             if let Some(mm) = self.modmap.get(module) {
                 let (lo, filename) = mm;
                 if let Some(cs) = lo.console {
@@ -111,29 +117,32 @@ impl Logger {
             }
         }
 
-        if let Some(lp) = &mut self.levels[level as usize - 1] {
-            let (lo, filename) = lp;
-            if let Some(cs) = lo.console {
-                console = cs
-            }
-            if filename != "" {
-                if *filename == self.filehandle.0 {
-                    let _ = self.filehandle.1.print(console, message);
-                } else {
-                    if let Some(fm) = self.fmap.get_mut(filename) {
-                        let _ = fm.print(console, message);
-                    }
+        if let Some(levels) = &self.levels {
+            if let Some(lp) = &levels[level as usize - 1] {
+                let (lo, filename) = lp;
+                if let Some(cs) = lo.console {
+                    console = cs
                 }
-                return;
+                if filename != "" {
+                    if *filename == self.filehandle.0 {
+                        let _ = self.filehandle.1.print(console, message);
+                    } else {
+                        if let Some(fm) = self.fmap.get_mut(filename) {
+                            let _ = fm.print(console, message);
+                        }
+                    }
+                    return;
+                }
             }
         }
+
         let _ = self.filehandle.1.print(console, message);
     }
 
     pub fn safeprint(&mut self, level: LEVEL, module: &str, message: &str) {
         let _guard = self.mutex.lock().expect("Failed to acquire lock");
         let mut console = self.fmthandle.get_console();
-        if module != "" && self.modmap.len() > 0 {
+        if self.modmap.len() > 0 {
             if let Some(mm) = self.modmap.get(module) {
                 let (lo, filename) = mm;
                 if let Some(cs) = lo.console {
@@ -152,22 +161,25 @@ impl Logger {
             }
         }
 
-        if let Some(lp) = &mut self.levels[level as usize - 1] {
-            let (lo, filename) = lp;
-            if let Some(cs) = lo.console {
-                console = cs
-            }
-            if filename != "" {
-                if *filename == self.filehandle.0 {
-                    let _ = self.filehandle.1.print(console, message);
-                } else {
-                    if let Some(fm) = self.fmap.get_mut(filename) {
-                        let _ = fm.print(console, message);
-                    }
+        if let Some(levels) = &self.levels {
+            if let Some(lp) = &levels[level as usize - 1] {
+                let (lo, filename) = lp;
+                if let Some(cs) = lo.console {
+                    console = cs
                 }
-                return;
+                if filename != "" {
+                    if *filename == self.filehandle.0 {
+                        let _ = self.filehandle.1.print(console, message);
+                    } else {
+                        if let Some(fm) = self.fmap.get_mut(filename) {
+                            let _ = fm.print(console, message);
+                        }
+                    }
+                    return;
+                }
             }
         }
+
         let _ = self.filehandle.1.print(console, message);
     }
 
@@ -188,10 +200,12 @@ impl Logger {
     }
 
     pub fn is_file_line(&mut self, level: LEVEL, module: &str) -> bool {
-        if let Some(lp) = &self.levels[level as usize - 1] {
-            let (lo, _) = lp;
-            if let Some(v) = lo.format {
-                return v & (Format::LongFileName | Format::ShortFileName) != 0;
+        if let Some(levels) = &self.levels {
+            if let Some(lp) = &levels[level as usize - 1] {
+                let (lo, _) = lp;
+                if let Some(v) = lo.format {
+                    return v & (Format::LongFileName | Format::ShortFileName) != 0;
+                }
             }
         }
 
@@ -227,19 +241,22 @@ impl Logger {
             }
         }
 
-        if let Some(lp) = &self.levels[level as usize - 1] {
-            let (lo, _) = lp;
-            if let Some(v) = lo.format {
-                fmat = v;
-            }
-            if lo.formatter.is_some() {
-                formatter = lo.formatter.as_ref();
+        if let Some(levels) = &self.levels {
+            if let Some(lp) = &levels[level as usize - 1] {
+                let (lo, _) = lp;
+                if let Some(v) = lo.format {
+                    fmat = v;
+                }
+                if lo.formatter.is_some() {
+                    formatter = lo.formatter.as_ref();
+                }
             }
         }
-        let s = log_fmt(self.attrfmt.levelfmt.as_ref(),self.attrfmt.timefmt.as_ref(),fmat, formatter, level, filename, line, message.as_str());
-        if let Some(f) = &self.attrfmt.bodyfmt{
-            f(level,s)
-        }else{
+
+        let s = log_fmt(self.attrfmt.levelfmt.as_ref(), self.attrfmt.timefmt.as_ref(), fmat, formatter, level, filename, line, message.as_str());
+        if let Some(f) = &self.attrfmt.bodyfmt {
+            f(level, s)
+        } else {
             s
         }
     }
@@ -353,7 +370,15 @@ impl Logger {
             }
         }
         let lo = LogOption { level: None, format: option.get_format(), formatter: option.get_formatter(), console: option.get_console(), fileoption: option.get_fileoption() };
-        self.levels[level as usize - 1] = Some((lo, filename));
+
+        if self.levels.is_none() {
+            self.levels = Some(std::array::from_fn(|_| None));
+        }
+
+        if let Some(levels) = &mut self.levels {
+            levels[level as usize - 1] = Some((lo, filename));
+        }
+
         self
     }
 
