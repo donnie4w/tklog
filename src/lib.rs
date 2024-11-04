@@ -89,19 +89,13 @@ impl LogOption {
         self
     }
 
-    pub fn set_fileoption(&mut self,  h:impl handle::FileOption + 'static) -> &mut Self {
+    pub fn set_fileoption(&mut self, h: impl handle::FileOption + 'static) -> &mut Self {
         self.fileoption = Some(Box::new(h));
         self
     }
 
     pub fn take(&mut self) -> Self {
-        LogOption {
-            level: self.level.take(),
-            format: self.format.take(),
-            formatter: self.formatter.take(),
-            console: self.console.take(),
-            fileoption: self.fileoption.take(),
-        }
+        LogOption { level: self.level.take(), format: self.format.take(), formatter: self.formatter.take(), console: self.console.take(), fileoption: self.fileoption.take() }
     }
 }
 
@@ -533,12 +527,40 @@ fn timesec() -> u64 {
 fn passtimemode(startsec: u64, timemode: MODE) -> bool {
     let start_time = DateTime::from_timestamp(startsec as i64, 0).expect("");
     let now: NaiveDateTime = Local::now().naive_local();
+
+    let (now_year, now_month, now_day, now_hour) = (
+        now.year(),
+        now.month(),
+        now.day(),
+        now.hour(),
+    );
+
+    let (start_year, start_month, start_day, start_hour) = (
+        start_time.year(),
+        start_time.month(),
+        start_time.day(),
+        start_time.hour(),
+    );
+
     match timemode {
-        MODE::HOUR => return now.hour() > start_time.hour(),
-        MODE::DAY => return now.day() > start_time.day(),
-        MODE::MONTH => return now.month() > start_time.month(),
+        MODE::HOUR => {
+            now_year > start_year
+                || (now_year == start_year && now_month > start_month)
+                || (now_year == start_year && now_month == start_month && now_day > start_day)
+                || (now_year == start_year && now_month == start_month && now_day == start_day && now_hour > start_hour)
+        }
+        MODE::DAY => {
+            now_year > start_year
+                || (now_year == start_year && now_month > start_month)
+                || (now_year == start_year && now_month == start_month && now_day > start_day)
+        }
+        MODE::MONTH => {
+            now_year > start_year
+                || (now_year == start_year && now_month > start_month)
+        }
     }
 }
+
 
 fn l2tk(level: log::Level) -> LEVEL {
     match level {
