@@ -468,6 +468,9 @@ where
         }
 
         if !tss.2.is_empty() {
+            if !time.is_empty() {
+                time.push('.');
+            }
             time.push_str(tss.2.as_str());
         }
     }
