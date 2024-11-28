@@ -18,7 +18,7 @@ use std::io;
 
 use tokio::io::AsyncWriteExt;
 
-use crate::{asyncfile, syncfile, Format, CUTMODE, LEVEL, MODE};
+use crate::{asyncfile, syncfile, Format, LogContent, CUTMODE, LEVEL, MODE};
 
 pub trait FileOption: Send + Sync {
     fn mode(&self) -> CUTMODE;
@@ -39,8 +39,22 @@ pub struct FileOptionType {
 }
 
 impl FileOptionType {
-    pub fn new(mode: CUTMODE, timemode: MODE, filename: &str, maxsize: u64, maxbackups: u32, compress: bool) -> Self {
-        FileOptionType { mode: mode, timemode: timemode, filename: filename.to_string(), size: maxsize, maxbackups, compress }
+    pub fn new(
+        mode: CUTMODE,
+        timemode: MODE,
+        filename: &str,
+        maxsize: u64,
+        maxbackups: u32,
+        compress: bool,
+    ) -> Self {
+        FileOptionType {
+            mode: mode,
+            timemode: timemode,
+            filename: filename.to_string(),
+            size: maxsize,
+            maxbackups,
+            compress,
+        }
     }
 }
 
@@ -79,7 +93,12 @@ pub struct FileTimeMode {
 
 impl FileTimeMode {
     pub fn new(filename: &str, mode: MODE, maxbackups: u32, compress: bool) -> Self {
-        FileTimeMode { filename: filename.to_string(), mode, max_backups: maxbackups, compress }
+        FileTimeMode {
+            filename: filename.to_string(),
+            mode,
+            max_backups: maxbackups,
+            compress,
+        }
     }
 }
 
@@ -144,21 +163,31 @@ impl FileOption for FileSizeMode {
 
 impl FileSizeMode {
     pub fn new(filename: &str, maxsize: u64, maxbackups: u32, compress: bool) -> Self {
-        FileSizeMode { filename: filename.to_string(), max_size: maxsize, max_backups: maxbackups, compress }
+        FileSizeMode {
+            filename: filename.to_string(),
+            max_size: maxsize,
+            max_backups: maxbackups,
+            compress,
+        }
     }
 }
 
 pub struct FmtHandler {
-    level: LEVEL,  // log level
-    format: u8,    // log format
-    console: bool, // log console
+    level: LEVEL,              // log level
+    format: u8,                // log format
+    console: bool,             // log console
     formatter: Option<String>, // log formatter
 }
 
 impl FmtHandler {
     pub fn new() -> Self {
         let f = Format::LevelFlag | Format::Date | Format::Time | Format::ShortFileName;
-        FmtHandler { level:crate::env_level(), format: f, console: true, formatter:None }
+        FmtHandler {
+            level: crate::env_level(),
+            format: f,
+            console: true,
+            formatter: None,
+        }
     }
 
     pub async fn async_console(&self, s: &str) -> Result<(), Box<dyn std::error::Error>> {
@@ -191,10 +220,9 @@ impl FmtHandler {
         self.formatter = Some(formatter);
     }
 
-    pub fn get_formatter(&self)->Option<&String>{
+    pub fn get_formatter(&self) -> Option<&String> {
         self.formatter.as_ref()
     }
-
 
     /** default：true */
     pub fn set_console(&mut self, console: bool) {
@@ -222,39 +250,53 @@ pub struct FHandler {
 
 impl FHandler {
     pub fn new() -> Self {
-        FHandler { file_handler: None, async_file_handler: None, async_console: None }
+        FHandler {
+            file_handler: None,
+            async_file_handler: None,
+            async_console: None,
+        }
     }
 
     pub fn new_with_handler(fh: Box<syncfile::FileHandler>) -> Self {
-        FHandler { file_handler: Some(*fh), async_file_handler: None, async_console: None }
+        FHandler {
+            file_handler: Some(*fh),
+            async_file_handler: None,
+            async_console: None,
+        }
     }
 
     pub fn new_with_asynchandler(fh: Box<asyncfile::FileHandler>) -> Self {
-        FHandler { file_handler: None, async_file_handler: Some(*fh), async_console: Some(Console::new()) }
+        FHandler {
+            file_handler: None,
+            async_file_handler: Some(*fh),
+            async_console: Some(Console::new()),
+        }
     }
 
-    pub fn print(&mut self, console: bool, s: &str) -> io::Result<()> {
+    pub fn print(&mut self, console: bool, s: LogContent) -> io::Result<()> {
         if console {
-            print!("{}", s);
+            print!("{}", s.console_body.unwrap_or(s.file_body.clone()));
         }
         if let Some(f) = self.file_handler.as_mut() {
-            f.write(s.as_bytes())?;
+            f.write(s.file_body.as_bytes())?;
         }
         Ok(())
     }
 
-    pub async fn async_print(&mut self, console: bool, s: &str) -> io::Result<()> {
+    pub async fn async_print(&mut self, console: bool, s: LogContent) -> io::Result<()> {
         if console {
             if self.async_console.is_none() {
                 let cs = Console::new();
-                let _ = cs.async_print(s).await;
+                let _ = cs
+                    .async_print(s.console_body.unwrap_or(s.file_body.clone()).as_ref())
+                    .await;
                 self.async_console = Some(cs)
             } else if let Some(c) = self.async_console.as_mut() {
-                let _ = c.async_print(s).await;
+                let _ = c.async_print(s.console_body.unwrap_or(s.file_body.clone()).as_ref()).await;
             }
         }
         if let Some(f) = self.async_file_handler.as_mut() {
-            f.write(s.as_bytes()).await?;
+            f.write(s.file_body.as_bytes()).await?;
         }
         Ok(())
     }

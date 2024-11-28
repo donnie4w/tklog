@@ -20,7 +20,10 @@ use crate::asyncfile::FileHandler;
 use crate::handle::{FHandler, FileOptionType, FmtHandler};
 use crate::tklog::asynclog;
 use crate::trie::Trie;
-use crate::{arguments_to_string, l2tk, log_fmt, AttrFormat, Format, LogContext, LogOption, LogOptionConst, OptionTrait, LEVEL, MODE, PRINTMODE, TKLOG2ASYNC_LOG};
+use crate::{
+    arguments_to_string, l2tk, log_fmt, AttrFormat, Format, LogContent, LogContext, LogOption,
+    LogOptionConst, OptionTrait, LEVEL, MODE, PRINTMODE, TKLOG2ASYNC_LOG,
+};
 use tokio::sync::mpsc;
 
 /// this is the tklog encapsulated Logger whose File operations
@@ -45,7 +48,7 @@ use tokio::sync::mpsc;
 /// };
 /// ```
 pub struct Logger {
-    sender: mpsc::UnboundedSender<(LEVEL, String, String)>,
+    sender: mpsc::UnboundedSender<(LEVEL, String, LogContent)>,
     fmthandle: FmtHandler,
     filehandle: (String, FHandler),
     mutex: tokio::sync::Mutex<u32>,
@@ -67,8 +70,8 @@ impl Logger {
             while let Some(message) = receiver.recv().await {
                 let (level, module, msg) = message;
                 let m1: String = module;
-                let m2: String = msg;
-                crate::async_log!(level, m1.as_str(), m2.as_str());
+                let m2: LogContent = msg;
+                crate::async_log!(level, m1.as_str(), m2);
             }
         });
         Logger {
@@ -88,7 +91,7 @@ impl Logger {
         }
     }
 
-    pub async fn print(&mut self, level: LEVEL, module: &str, message: &str) {
+    pub async fn print(&mut self, level: LEVEL, module: &str, message: LogContent) {
         let mut console = self.fmthandle.get_console();
         if module != "" && self.modmap.len() > 0 {
             if let Some(mm) = self.modmap.get(module) {
@@ -131,7 +134,7 @@ impl Logger {
         let _ = self.filehandle.1.async_print(console, message).await;
     }
 
-    pub async fn safeprint(&mut self, level: LEVEL, module: &str, message: &str) {
+    pub async fn safeprint(&mut self, level: LEVEL, module: &str, message: LogContent) {
         let _mutex_guard = self.mutex.lock().await;
         let mut console = self.fmthandle.get_console();
         if module != "" && self.modmap.len() > 0 {
@@ -175,8 +178,10 @@ impl Logger {
         let _ = self.filehandle.1.async_print(console, message).await;
     }
 
-    pub fn log(&self, level: LEVEL, module: String, message: String) {
-        self.sender.send((level, module, message)).expect("send error");
+    pub fn log(&self, level: LEVEL, module: String, message: LogContent) {
+        self.sender
+            .send((level, module, message))
+            .expect("send error");
     }
 
     pub fn get_level(&mut self, module: &str) -> LEVEL {
@@ -212,11 +217,24 @@ impl Logger {
         self.fmthandle.is_file_line()
     }
 
-    pub fn fmt(&mut self, module: &str, level: LEVEL, filename: &str, line: u32, message: String) -> String {
+    pub fn fmt(
+        &mut self,
+        module: &str,
+        level: LEVEL,
+        filename: &str,
+        line: u32,
+        message: String,
+    ) -> LogContent {
         if self.custom_handler.is_some() {
             if let Some(ch) = &self.custom_handler {
-                if !ch(&LogContext { level: level, filename: filename.to_string(), line: line, log_body: message.clone(), modname: module.to_string() }) {
-                    return String::new();
+                if !ch(&LogContext {
+                    level: level,
+                    filename: filename.to_string(),
+                    line: line,
+                    log_body: message.clone(),
+                    modname: module.to_string(),
+                }) {
+                    return LogContent::new(String::new(), None);
                 }
             }
         }
@@ -246,12 +264,32 @@ impl Logger {
             }
         }
 
-        let s = log_fmt(self.attrfmt.levelfmt.as_ref(), self.attrfmt.timefmt.as_ref(), fmat, formatter, level, filename, line, message.as_str());
-        if let Some(f) = &self.attrfmt.bodyfmt {
-            f(level, s)
+        let s = log_fmt(
+            self.attrfmt.levelfmt.as_ref(),
+            self.attrfmt.timefmt.as_ref(),
+            fmat,
+            formatter,
+            level,
+            filename,
+            line,
+            message.as_str(),
+        );
+        let console_s = if let Some(f) = &self.attrfmt.consolebodyfmt {
+            Some(f(level, s.clone()))
         } else {
-            s
-        }
+            None
+        };
+
+        let content = LogContent::new(
+            if let Some(f) = &self.attrfmt.filebodyfmt {
+                f(level, s)
+            } else {
+                s
+            },
+            console_s,
+        );
+
+        content
     }
 
     pub fn set_printmode(&mut self, mode: PRINTMODE) -> &mut Self {
@@ -281,16 +319,42 @@ impl Logger {
         self
     }
 
-    pub async fn set_cutmode_by_size(&mut self, filename: &str, maxsize: u64, maxbackups: u32, compress: bool) -> &mut Self {
-        let fsm = FileOptionType::new(crate::CUTMODE::SIZE, MODE::DAY, filename, maxsize, maxbackups, compress);
+    pub async fn set_cutmode_by_size(
+        &mut self,
+        filename: &str,
+        maxsize: u64,
+        maxbackups: u32,
+        compress: bool,
+    ) -> &mut Self {
+        let fsm = FileOptionType::new(
+            crate::CUTMODE::SIZE,
+            MODE::DAY,
+            filename,
+            maxsize,
+            maxbackups,
+            compress,
+        );
         let fh = FileHandler::new(Box::new(fsm)).await;
         self.filehandle.0 = filename.to_string();
         self.filehandle.1.set_async_file_handler(fh.unwrap());
         self
     }
 
-    pub async fn set_cutmode_by_time(&mut self, filename: &str, mode: MODE, maxbackups: u32, compress: bool) -> &mut Self {
-        let ftm = FileOptionType::new(crate::CUTMODE::TIME, mode, filename, 0, maxbackups, compress);
+    pub async fn set_cutmode_by_time(
+        &mut self,
+        filename: &str,
+        mode: MODE,
+        maxbackups: u32,
+        compress: bool,
+    ) -> &mut Self {
+        let ftm = FileOptionType::new(
+            crate::CUTMODE::TIME,
+            mode,
+            filename,
+            0,
+            maxbackups,
+            compress,
+        );
         let fh = FileHandler::new(Box::new(ftm)).await;
         self.filehandle.0 = filename.to_string();
         self.filehandle.1.set_async_file_handler(fh.unwrap());
@@ -337,7 +401,18 @@ impl Logger {
                 Err(_) => {}
             }
         }
-        self.modmap.insert(module, (LogOptionConst { level: option.level, format: option.format, formatter: option.formatter, console: option.console }, filename.clone()));
+        self.modmap.insert(
+            module,
+            (
+                LogOptionConst {
+                    level: option.level,
+                    format: option.format,
+                    formatter: option.formatter,
+                    console: option.console,
+                },
+                filename.clone(),
+            ),
+        );
         self
     }
 
@@ -360,12 +435,18 @@ impl Logger {
                 Err(_) => {}
             }
         }
-        let lo = LogOption { level: None, format: option.get_format(), formatter: option.get_formatter(), console: option.get_console(), fileoption: option.get_fileoption() };
+        let lo = LogOption {
+            level: None,
+            format: option.get_format(),
+            formatter: option.get_formatter(),
+            console: option.get_console(),
+            fileoption: option.get_fileoption(),
+        };
 
         if self.levels.is_none() {
             self.levels = Some(std::array::from_fn(|_| None));
         }
-        
+
         if let Some(levels) = &mut self.levels {
             levels[level as usize - 1] = Some((lo, filename));
         }
@@ -433,16 +514,32 @@ impl Log {
         self
     }
 
-    pub async fn set_cutmode_by_size(&self, filename: &str, maxsize: u64, maxbackups: u32, compress: bool) -> &Self {
+    pub async fn set_cutmode_by_size(
+        &self,
+        filename: &str,
+        maxsize: u64,
+        maxbackups: u32,
+        compress: bool,
+    ) -> &Self {
         unsafe {
-            asynclog.set_cutmode_by_size(filename, maxsize, maxbackups, compress).await;
+            asynclog
+                .set_cutmode_by_size(filename, maxsize, maxbackups, compress)
+                .await;
         }
         self
     }
 
-    pub async fn set_cutmode_by_time(&self, filename: &str, mode: MODE, maxbackups: u32, compress: bool) -> &Self {
+    pub async fn set_cutmode_by_time(
+        &self,
+        filename: &str,
+        mode: MODE,
+        maxbackups: u32,
+        compress: bool,
+    ) -> &Self {
         unsafe {
-            asynclog.set_cutmode_by_time(filename, mode, maxbackups, compress).await;
+            asynclog
+                .set_cutmode_by_time(filename, mode, maxbackups, compress)
+                .await;
         }
         self
     }
@@ -538,7 +635,7 @@ impl log::Log for Log {
 #[macro_export]
 macro_rules! async_log {
     ($level:expr,$module:expr,$msg:expr) => {
-        let msg: &str = $msg;
+        let msg: LogContent = $msg;
         let module: &str = $module;
         unsafe {
             crate::tklog::asynclog.print($level, module, msg).await;
@@ -616,7 +713,7 @@ macro_rules! async_log_common {
                 }else {
                     let s = $crate::tklog::asynclog.fmt(module,$level, file, line, msg);
                     if !s.is_empty(){
-                        $crate::tklog::asynclog.safeprint($level,module,s.as_str()).await;
+                        $crate::tklog::asynclog.safeprint($level,module,s).await;
                     }
                 }
             }
