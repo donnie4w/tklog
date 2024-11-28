@@ -66,7 +66,13 @@ pub struct LogOption {
 
 impl LogOption {
     pub fn new() -> Self {
-        LogOption { level: None, format: None, formatter: None, console: None, fileoption: None }
+        LogOption {
+            level: None,
+            format: None,
+            formatter: None,
+            console: None,
+            fileoption: None,
+        }
     }
 
     pub fn set_format(&mut self, f: u8) -> &mut Self {
@@ -95,7 +101,13 @@ impl LogOption {
     }
 
     pub fn take(&mut self) -> Self {
-        LogOption { level: self.level.take(), format: self.format.take(), formatter: self.formatter.take(), console: self.console.take(), fileoption: self.fileoption.take() }
+        LogOption {
+            level: self.level.take(),
+            format: self.format.take(),
+            formatter: self.formatter.take(),
+            console: self.console.take(),
+            fileoption: self.fileoption.take(),
+        }
     }
 }
 
@@ -118,7 +130,14 @@ impl OptionTrait for LogOption {
 
     fn get_fileoption(&self) -> Option<Box<dyn handle::FileOption>> {
         if let Some(fo) = &self.fileoption {
-            return Some(Box::new(FileOptionType { mode: fo.mode(), timemode: fo.timemode(), filename: fo.filename().clone(), size: fo.size(), maxbackups: fo.maxbackups(), compress: fo.compress() }));
+            return Some(Box::new(FileOptionType {
+                mode: fo.mode(),
+                timemode: fo.timemode(),
+                filename: fo.filename().clone(),
+                size: fo.size(),
+                maxbackups: fo.maxbackups(),
+                compress: fo.compress(),
+            }));
         }
         None
     }
@@ -139,6 +158,24 @@ pub struct LogContext {
     pub filename: String,
     pub line: u32,
     pub modname: String,
+}
+
+pub struct LogContent {
+    pub file_body: String,
+    pub console_body: Option<String>,
+}
+
+impl LogContent {
+    pub fn new(file_body: String, console_body: Option<String>) -> Self {
+        LogContent {
+            file_body,
+            console_body,
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.file_body.is_empty() && self.console_body.is_none()
+    }
 }
 
 pub struct LevelOption {
@@ -249,7 +286,10 @@ fn env_level() -> LEVEL {
         match LEVEL::from_str(&rust_log) {
             Ok(level) => level,
             Err(_) => {
-                println!("Warning: Unknown log level '{}', defaulting to Debug", rust_log);
+                println!(
+                    "Warning: Unknown log level '{}', defaulting to Debug",
+                    rust_log
+                );
                 LEVEL::Debug
             }
         }
@@ -353,8 +393,16 @@ async fn async_gzip(filename: &str) -> io::Result<()> {
     Ok(())
 }
 
-fn parse_and_format_log(format_str: &str, level: &str, time: &str, file: &str, message: &str) -> String {
-    let mut result = String::with_capacity(format_str.len() + level.len() + time.len() + file.len() + message.len());
+fn parse_and_format_log(
+    format_str: &str,
+    level: &str,
+    time: &str,
+    file: &str,
+    message: &str,
+) -> String {
+    let mut result = String::with_capacity(
+        format_str.len() + level.len() + time.len() + file.len() + message.len(),
+    );
     let mut in_placeholder = false;
     let mut placeholder = String::new();
 
@@ -400,7 +448,16 @@ fn getbackup_with_time(startsec: u64, timemode: MODE) -> String {
     }
 }
 
-fn log_fmt<LF, TF>(levelfmt: Option<LF>, timefmt: Option<TF>, fmat: u8, formatter: Option<&String>, level: LEVEL, filename: &str, line: u32, msg: &str) -> String
+fn log_fmt<LF, TF>(
+    levelfmt: Option<LF>,
+    timefmt: Option<TF>,
+    fmat: u8,
+    formatter: Option<&String>,
+    level: LEVEL,
+    filename: &str,
+    line: u32,
+    msg: &str,
+) -> String
 where
     LF: Fn(LEVEL) -> String,
     TF: Fn() -> (String, String, String),
@@ -485,7 +542,8 @@ where
     }
 
     if formatter.is_none() {
-        let mut r = String::with_capacity(levelflag.len() + time.len() + file.len() + msg.len() + 4);
+        let mut r =
+            String::with_capacity(levelflag.len() + time.len() + file.len() + msg.len() + 4);
         if !levelflag.is_empty() {
             r.push_str(&levelflag);
         }
@@ -504,7 +562,13 @@ where
         return r;
     } else {
         let fmts = formatter.unwrap();
-        return parse_and_format_log(fmts.as_str(), levelflag.as_str(), time.as_str(), file.as_str(), msg);
+        return parse_and_format_log(
+            fmts.as_str(),
+            levelflag.as_str(),
+            time.as_str(),
+            file.as_str(),
+            msg,
+        );
     }
 }
 
@@ -531,12 +595,7 @@ fn passtimemode(startsec: u64, timemode: MODE) -> bool {
     let start_time = DateTime::from_timestamp(startsec as i64, 0).expect("");
     let now: NaiveDateTime = Local::now().naive_local();
 
-    let (now_year, now_month, now_day, now_hour) = (
-        now.year(),
-        now.month(),
-        now.day(),
-        now.hour(),
-    );
+    let (now_year, now_month, now_day, now_hour) = (now.year(), now.month(), now.day(), now.hour());
 
     let (start_year, start_month, start_day, start_hour) = (
         start_time.year(),
@@ -550,20 +609,19 @@ fn passtimemode(startsec: u64, timemode: MODE) -> bool {
             now_year > start_year
                 || (now_year == start_year && now_month > start_month)
                 || (now_year == start_year && now_month == start_month && now_day > start_day)
-                || (now_year == start_year && now_month == start_month && now_day == start_day && now_hour > start_hour)
+                || (now_year == start_year
+                    && now_month == start_month
+                    && now_day == start_day
+                    && now_hour > start_hour)
         }
         MODE::DAY => {
             now_year > start_year
                 || (now_year == start_year && now_month > start_month)
                 || (now_year == start_year && now_month == start_month && now_day > start_day)
         }
-        MODE::MONTH => {
-            now_year > start_year
-                || (now_year == start_year && now_month > start_month)
-        }
+        MODE::MONTH => now_year > start_year || (now_year == start_year && now_month > start_month),
     }
 }
-
 
 fn l2tk(level: log::Level) -> LEVEL {
     match level {
@@ -582,12 +640,20 @@ fn arguments_to_string(args: &std::fmt::Arguments) -> String {
 pub struct AttrFormat {
     levelfmt: Option<Box<dyn Fn(LEVEL) -> String + Send + Sync>>,
     timefmt: Option<Box<dyn Fn() -> (String, String, String) + Send + Sync>>,
-    bodyfmt: Option<Box<dyn Fn(LEVEL, String) -> String + Send + Sync>>,
+    // bodyfmt: Option<Box<dyn Fn(LEVEL, String) -> String + Send + Sync>>,
+    filebodyfmt: Option<Box<dyn Fn(LEVEL, String) -> String + Send + Sync>>,
+    consolebodyfmt: Option<Box<dyn Fn(LEVEL, String) -> String + Send + Sync>>,
 }
 
 impl AttrFormat {
     pub fn new() -> AttrFormat {
-        AttrFormat { levelfmt: None, timefmt: None, bodyfmt: None }
+        AttrFormat {
+            levelfmt: None,
+            timefmt: None,
+            // bodyfmt: None,
+            consolebodyfmt: None,
+            filebodyfmt: None,
+        }
     }
 
     /// ### Exmaple
@@ -632,7 +698,7 @@ impl AttrFormat {
         self.timefmt = Some(Box::new(timefmt));
     }
 
-    /// ### This function will support the reprocessing of log information
+    /// Shortcut for setting the function to reprocess **both the console format and the file format** of logs.  
     ///
     /// ### Example
     /// ```rust
@@ -652,6 +718,37 @@ impl AttrFormat {
     where
         F: Fn(LEVEL, String) -> String + Send + Sync + 'static,
     {
-        self.bodyfmt = Some(Box::new(bodyfmt));
+        self.filebodyfmt = Some(Box::new(bodyfmt));
+        self.consolebodyfmt = None; // Setting it to none will force the console to use filebodyfmt.
+    }
+
+    /// Set the function to reprocess logs **writing to files**  
+    /// 
+    /// ### Example
+    /// ```rust
+    /// fmt.set_body_fmt(|level,body| {
+    ///     format!("{}{}{}", "[", body, "]"); // add brackets around the log body
+    /// });
+    /// ```
+    pub fn set_file_body_fmt<F>(&mut self, filebodyfmt: F)
+    where
+        F: Fn(LEVEL, String) -> String + Send + Sync + 'static,
+    {
+        self.filebodyfmt = Some(Box::new(filebodyfmt));
+    }
+
+    /// Set the function to reprocess logs **writing to console**  
+    /// 
+    /// ### Example
+    /// ```rust
+    /// fmt.set_body_fmt(|level,body| {
+    ///     format!("{}{}{}", "[", body, "]"); // add brackets around the log body
+    /// });
+    /// ```
+    pub fn set_console_body_fmt<F>(&mut self, consolebodyfmt: F)
+    where
+        F: Fn(LEVEL, String) -> String + Send + Sync + 'static,
+    {
+        self.consolebodyfmt = Some(Box::new(consolebodyfmt));
     }
 }
