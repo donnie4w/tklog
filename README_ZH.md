@@ -29,7 +29,7 @@
 
 ```rust
 [dependencies]
-tklog = "0.2.7"   #   "0.x.x" current version
+tklog = "0.2.8"   #   "0.x.x" current version
 ```
 
 最简单常用的方式：**直接调用**
@@ -737,13 +737,9 @@ fn testlog() {
             (now.format("%Y/%m/%d").to_string(), now.format("%H:%M:%S").to_string(), "".to_string())
         });
 
-        fmt.set_body_fmt(|level, body| {
+        fmt.set_console_body_fmt(|level, body| {
             //处理body的末尾换行符
-            let trimmed_body = if body.ends_with('\n') {
-                format!("{}{}", body.as_str()[..body.len() - 1].to_string(), "\x1b[0m\n")
-            } else {
-                format!("{}{}", body, "\x1b[0m\n")
-            };
+            let trimmed_body = if body.ends_with('\n') { format!("{}{}", body.as_str()[..body.len() - 1].to_string(), "\x1b[0m\n") } else { format!("{}{}", body, "\x1b[0m\n") };
 
             match level {
                 LEVEL::Trace => format!("{}{}", "\x1b[34m", trimmed_body), //蓝色
@@ -752,6 +748,20 @@ fn testlog() {
                 LEVEL::Warn => format!("{}{}", "\x1b[33m", trimmed_body),  //黄色
                 LEVEL::Error => format!("{}{}", "\x1b[31m", trimmed_body), //红色
                 LEVEL::Fatal => format!("{}{}", "\x1b[41m", trimmed_body), //背景红
+                LEVEL::Off => "".to_string(),
+            }
+        });
+
+        fmt.set_body_fmt(|level, body| {
+            //处理body的末尾换行符
+            let trimmed_body = if body.ends_with('\n') { format!("{}{}", body.as_str()[..body.len() - 1].to_string(), "\x1b[0m\n") } else { format!("{}{}", body, "\x1b[0m\n") };
+            match level {
+                LEVEL::Trace => format!("{}{}", "\x1b[44m", trimmed_body), //背景蓝色
+                LEVEL::Debug => format!("{}{}", "\x1b[46m", trimmed_body), //背景青色
+                LEVEL::Info => format!("{}{}", "\x1b[42m", trimmed_body),  //背景绿色
+                LEVEL::Warn => format!("{}{}", "\x1b[43m", trimmed_body),  //背景黄色
+                LEVEL::Error => format!("{}{}", "\x1b[41m", trimmed_body), //背景红色
+                LEVEL::Fatal => format!("{}{}", "\x1b[45m", trimmed_body), //背景紫色
                 LEVEL::Off => "".to_string(),
             }
         });
