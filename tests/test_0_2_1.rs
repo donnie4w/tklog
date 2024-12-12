@@ -30,11 +30,12 @@ mod module2 {
 
 #[test]
 fn testmod() {
-    tklog::LOG.set_mod_option("test_0210::module1::*", LogOption { level: None, format: None, formatter: None, console: Some(true), fileoption: Some(Box::new(FileTimeMode::new("syncmodule1.log", tklog::MODE::DAY, 0, true))) });
+    tklog::LOG.set_mod_option("test_0_2_1::module1::*", LogOption { level: None, format: None, formatter: None, console: Some(true), fileoption: Some(Box::new(FileTimeMode::new("syncmodule1.log", tklog::MODE::DAY, 0, true))) });
     module1::testmod();
     module1::m1::testmod();
     module1::m2::testmod();
     module2::testmod();
+    std::thread::sleep(std::time::Duration::from_secs(1))
 }
 
 mod module3 {
@@ -66,8 +67,8 @@ mod module4 {
 
 #[tokio::test]
 async fn testasyncmod() {
-    tklog::ASYNC_LOG.set_mod_option("test_0210::module3::*", LogOption { level: None, format: None, formatter: None, console: Some(true), fileoption: Some(Box::new(FileTimeMode::new("asyncmodule2.log", tklog::MODE::DAY, 0, true))) }).await;
-    tklog::ASYNC_LOG.set_mod_option("test_0210::module4", LogOption { level: None, format: None, formatter: None, console: Some(true), fileoption: Some(Box::new(FileTimeMode::new("asyncmodule2.log", tklog::MODE::DAY, 0, true))) }).await;
+    tklog::ASYNC_LOG.set_mod_option("test_0_2_1::module3::*", LogOption { level: None, format: None, formatter: None, console: Some(true), fileoption: Some(Box::new(FileTimeMode::new("asyncmodule2.log", tklog::MODE::DAY, 0, true))) }).await;
+    tklog::ASYNC_LOG.set_mod_option("test_0_2_1::module4", LogOption { level: None, format: None, formatter: None, console: Some(true), fileoption: Some(Box::new(FileTimeMode::new("asyncmodule2.log", tklog::MODE::DAY, 0, true))) }).await;
     module3::testmod().await;
     module3::m3::testmod().await;
     module3::m4::testmod().await;
