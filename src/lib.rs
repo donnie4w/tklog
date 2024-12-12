@@ -531,39 +531,16 @@ fn passtimemode(startsec: u64, timemode: MODE) -> bool {
     let start_time = DateTime::from_timestamp(startsec as i64, 0).expect("");
     let now: NaiveDateTime = Local::now().naive_local();
 
-    let (now_year, now_month, now_day, now_hour) = (
-        now.year(),
-        now.month(),
-        now.day(),
-        now.hour(),
-    );
+    let (now_year, now_month, now_day, now_hour) = (now.year(), now.month(), now.day(), now.hour());
 
-    let (start_year, start_month, start_day, start_hour) = (
-        start_time.year(),
-        start_time.month(),
-        start_time.day(),
-        start_time.hour(),
-    );
+    let (start_year, start_month, start_day, start_hour) = (start_time.year(), start_time.month(), start_time.day(), start_time.hour());
 
     match timemode {
-        MODE::HOUR => {
-            now_year > start_year
-                || (now_year == start_year && now_month > start_month)
-                || (now_year == start_year && now_month == start_month && now_day > start_day)
-                || (now_year == start_year && now_month == start_month && now_day == start_day && now_hour > start_hour)
-        }
-        MODE::DAY => {
-            now_year > start_year
-                || (now_year == start_year && now_month > start_month)
-                || (now_year == start_year && now_month == start_month && now_day > start_day)
-        }
-        MODE::MONTH => {
-            now_year > start_year
-                || (now_year == start_year && now_month > start_month)
-        }
+        MODE::HOUR => now_year > start_year || (now_year == start_year && now_month > start_month) || (now_year == start_year && now_month == start_month && now_day > start_day) || (now_year == start_year && now_month == start_month && now_day == start_day && now_hour > start_hour),
+        MODE::DAY => now_year > start_year || (now_year == start_year && now_month > start_month) || (now_year == start_year && now_month == start_month && now_day > start_day),
+        MODE::MONTH => now_year > start_year || (now_year == start_year && now_month > start_month),
     }
 }
-
 
 fn l2tk(level: log::Level) -> LEVEL {
     match level {
@@ -583,11 +560,12 @@ pub struct AttrFormat {
     levelfmt: Option<Box<dyn Fn(LEVEL) -> String + Send + Sync>>,
     timefmt: Option<Box<dyn Fn() -> (String, String, String) + Send + Sync>>,
     bodyfmt: Option<Box<dyn Fn(LEVEL, String) -> String + Send + Sync>>,
+    console_bodyfmt: Option<Box<dyn Fn(LEVEL, String) -> String + Send + Sync>>,
 }
 
 impl AttrFormat {
     pub fn new() -> AttrFormat {
-        AttrFormat { levelfmt: None, timefmt: None, bodyfmt: None }
+        AttrFormat { levelfmt: None, timefmt: None, bodyfmt: None, console_bodyfmt: None }
     }
 
     /// ### Exmaple
@@ -653,5 +631,29 @@ impl AttrFormat {
         F: Fn(LEVEL, String) -> String + Send + Sync + 'static,
     {
         self.bodyfmt = Some(Box::new(bodyfmt));
+    }
+
+
+    /// ### This function will support the reprocessing of log information
+    ///
+    /// ### Example
+    /// ```rust
+    /// fmt.set_console_body_fmt(|level,body| {
+    ///     match level {
+    ///         LEVEL::Trace =>  format!("{}{}{}","\x1b[34m" ,body,"\x1b[0m") , //blue
+    ///         LEVEL::Debug => format!("{}{}{}","\x1b[36m" ,body,"\x1b[0m") , //cyan
+    ///         LEVEL::Info => format!("{}{}{}","\x1b[32m" ,body,"\x1b[0m") ,  //green
+    ///         LEVEL::Warn => format!("{}{}{}","\x1b[33m" ,body,"\x1b[0m") ,  //yellow
+    ///         LEVEL::Error => format!("{}{}{}","\x1b[31m" ,body,"\x1b[0m") , //red
+    ///         LEVEL::Fatal => format!("{}{}{}","\x1b[41m" ,body,"\x1b[0m") , //red-background
+    ///         LEVEL::Off => "".to_string(),
+    ///     }
+    /// });
+    /// ```
+    pub fn set_console_body_fmt<F>(&mut self, bodyfmt: F)
+    where 
+    F: Fn(LEVEL, String) -> String + Send + Sync + 'static,
+    {
+        self.console_bodyfmt = Some(Box::new(bodyfmt));
     }
 }
