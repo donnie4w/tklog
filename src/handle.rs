@@ -149,16 +149,16 @@ impl FileSizeMode {
 }
 
 pub struct FmtHandler {
-    level: LEVEL,  // log level
-    format: u8,    // log format
-    console: bool, // log console
+    level: LEVEL,              // log level
+    format: u8,                // log format
+    console: bool,             // log console
     formatter: Option<String>, // log formatter
 }
 
 impl FmtHandler {
     pub fn new() -> Self {
         let f = Format::LevelFlag | Format::Date | Format::Time | Format::ShortFileName;
-        FmtHandler { level:crate::env_level(), format: f, console: true, formatter:None }
+        FmtHandler { level: crate::env_level(), format: f, console: true, formatter: None }
     }
 
     pub async fn async_console(&self, s: &str) -> Result<(), Box<dyn std::error::Error>> {
@@ -191,10 +191,9 @@ impl FmtHandler {
         self.formatter = Some(formatter);
     }
 
-    pub fn get_formatter(&self)->Option<&String>{
+    pub fn get_formatter(&self) -> Option<&String> {
         self.formatter.as_ref()
     }
-
 
     /** default：true */
     pub fn set_console(&mut self, console: bool) {
@@ -233,9 +232,9 @@ impl FHandler {
         FHandler { file_handler: None, async_file_handler: Some(*fh), async_console: Some(Console::new()) }
     }
 
-    pub fn print(&mut self, console: bool, s: &str) -> io::Result<()> {
-        if console {
-            print!("{}", s);
+    pub fn print(&mut self, is_console: bool, console: &str, s: &str) -> io::Result<()> {
+        if is_console {
+            print!("{}", if console.is_empty() { s } else { console });
         }
         if let Some(f) = self.file_handler.as_mut() {
             f.write(s.as_bytes())?;
@@ -243,14 +242,14 @@ impl FHandler {
         Ok(())
     }
 
-    pub async fn async_print(&mut self, console: bool, s: &str) -> io::Result<()> {
-        if console {
+    pub async fn async_print(&mut self, is_console: bool, console: &str, s: &str) -> io::Result<()> {
+        if is_console {
             if self.async_console.is_none() {
                 let cs = Console::new();
-                let _ = cs.async_print(s).await;
+                let _ = cs.async_print(if console.is_empty() { s } else { console }).await;
                 self.async_console = Some(cs)
             } else if let Some(c) = self.async_console.as_mut() {
-                let _ = c.async_print(s).await;
+                let _ = c.async_print(if console.is_empty() { s } else { console }).await;
             }
         }
         if let Some(f) = self.async_file_handler.as_mut() {
