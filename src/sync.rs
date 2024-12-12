@@ -96,20 +96,35 @@ impl Logger {
     }
 
     pub fn print(&mut self, level: LEVEL, module: &str, message: &str) {
-        let mut console = self.fmthandle.get_console();
+        let mut console = String::new();
+        let mut msg =String::new();
+        let mut is_bodyfmt = false;
+        
+        if let Some(f) = &self.attrfmt.bodyfmt {
+            is_bodyfmt = true;
+            msg = f(level, message.to_string());
+        }
 
         if self.modmap.len() > 0 {
             if let Some(mm) = self.modmap.get(module) {
                 let (lo, filename) = mm;
+                let mut is_mod_console = self.fmthandle.get_console();
+                let mut is_consolefmt = false;
                 if let Some(cs) = lo.console {
-                    console = cs
+                    is_mod_console = cs;
+                    if is_mod_console {
+                        if let Some(f) = &self.attrfmt.console_bodyfmt {
+                            is_consolefmt = true;
+                            console = f(level, message.to_string());
+                        }
+                    }
                 }
                 if filename != "" {
                     if *filename == self.filehandle.0 {
-                        let _ = self.filehandle.1.print(console, message);
+                        let _ = self.filehandle.1.print(is_mod_console,if is_mod_console{if is_consolefmt{console.as_str()}else{""}}else{""} , if is_bodyfmt{msg.as_str()}else{message});
                     } else {
                         if let Some(fm) = self.fmap.get_mut(filename) {
-                            let _ = fm.print(console, message);
+                            let _ = fm.print(is_mod_console,if is_mod_console{if is_consolefmt{console.as_str()}else{""}}else{""} , if is_bodyfmt{msg.as_str()}else{message});
                         }
                     }
                     return;
@@ -120,15 +135,23 @@ impl Logger {
         if let Some(levels) = &self.levels {
             if let Some(lp) = &levels[level as usize - 1] {
                 let (lo, filename) = lp;
+                let mut is_level_console = self.fmthandle.get_console();
+                let mut is_consolefmt = false;
                 if let Some(cs) = lo.console {
-                    console = cs
+                    is_level_console = cs;
+                    if is_level_console && console.is_empty(){
+                        if let Some(f) = &self.attrfmt.console_bodyfmt {
+                            is_consolefmt = true;
+                            console = f(level, message.to_string());
+                        }
+                    }
                 }
                 if filename != "" {
                     if *filename == self.filehandle.0 {
-                        let _ = self.filehandle.1.print(console, message);
+                        let _ = self.filehandle.1.print(is_level_console,if is_level_console{if is_consolefmt{console.as_str()}else{""}}else{""} , if is_bodyfmt{msg.as_str()}else{message});
                     } else {
                         if let Some(fm) = self.fmap.get_mut(filename) {
-                            let _ = fm.print(console, message);
+                            let _ = fm.print(is_level_console,if is_level_console{if is_consolefmt{console.as_str()}else{""}}else{""} , if is_bodyfmt{msg.as_str()}else{message});
                         }
                     }
                     return;
@@ -136,24 +159,48 @@ impl Logger {
             }
         }
 
-        let _ = self.filehandle.1.print(console, message);
+        let  is_console = self.fmthandle.get_console();
+        let mut is_consolefmt = false;
+        if is_console && console.is_empty() {
+            if let Some(f) = &self.attrfmt.console_bodyfmt {
+                is_consolefmt = true;
+                console = f(level, message.to_string());
+            }
+        }
+        let _ = self.filehandle.1.print(is_console,if is_console{if is_consolefmt{console.as_str()}else{""}}else{""} , if is_bodyfmt{msg.as_str()}else{message});
     }
 
     pub fn safeprint(&mut self, level: LEVEL, module: &str, message: &str) {
         let _guard = self.mutex.lock().expect("Failed to acquire lock");
-        let mut console = self.fmthandle.get_console();
+        let mut console = String::new();
+        let mut msg =String::new();
+        let mut is_bodyfmt = false;
+        
+        if let Some(f) = &self.attrfmt.bodyfmt {
+            is_bodyfmt = true;
+            msg = f(level, message.to_string());
+        }
+
         if self.modmap.len() > 0 {
             if let Some(mm) = self.modmap.get(module) {
                 let (lo, filename) = mm;
+                let mut is_mod_console = self.fmthandle.get_console();
+                let mut is_consolefmt = false;
                 if let Some(cs) = lo.console {
-                    console = cs
+                    is_mod_console = cs;
+                    if is_mod_console {
+                        if let Some(f) = &self.attrfmt.console_bodyfmt {
+                            is_consolefmt = true;
+                            console = f(level, message.to_string());
+                        }
+                    }
                 }
                 if filename != "" {
                     if *filename == self.filehandle.0 {
-                        let _ = self.filehandle.1.print(console, message);
+                        let _ = self.filehandle.1.print(is_mod_console,if is_mod_console{if is_consolefmt{console.as_str()}else{""}}else{""} , if is_bodyfmt{msg.as_str()}else{message});
                     } else {
                         if let Some(fm) = self.fmap.get_mut(filename) {
-                            let _ = fm.print(console, message);
+                            let _ = fm.print(is_mod_console,if is_mod_console{if is_consolefmt{console.as_str()}else{""}}else{""} , if is_bodyfmt{msg.as_str()}else{message});
                         }
                     }
                     return;
@@ -164,15 +211,23 @@ impl Logger {
         if let Some(levels) = &self.levels {
             if let Some(lp) = &levels[level as usize - 1] {
                 let (lo, filename) = lp;
+                let mut is_level_console = self.fmthandle.get_console();
+                let mut is_consolefmt = false;
                 if let Some(cs) = lo.console {
-                    console = cs
+                    is_level_console = cs;
+                    if is_level_console && console.is_empty(){
+                        if let Some(f) = &self.attrfmt.console_bodyfmt {
+                            is_consolefmt = true;
+                            console = f(level, message.to_string());
+                        }
+                    }
                 }
                 if filename != "" {
                     if *filename == self.filehandle.0 {
-                        let _ = self.filehandle.1.print(console, message);
+                        let _ = self.filehandle.1.print(is_level_console,if is_level_console{if is_consolefmt{console.as_str()}else{""}}else{""} , if is_bodyfmt{msg.as_str()}else{message});
                     } else {
                         if let Some(fm) = self.fmap.get_mut(filename) {
-                            let _ = fm.print(console, message);
+                            let _ = fm.print(is_level_console,if is_level_console{if is_consolefmt{console.as_str()}else{""}}else{""} , if is_bodyfmt{msg.as_str()}else{message});
                         }
                     }
                     return;
@@ -180,7 +235,15 @@ impl Logger {
             }
         }
 
-        let _ = self.filehandle.1.print(console, message);
+        let  is_console = self.fmthandle.get_console();
+        let mut is_consolefmt = false;
+        if is_console && console.is_empty() {
+            if let Some(f) = &self.attrfmt.console_bodyfmt {
+                is_consolefmt = true;
+                console = f(level, message.to_string());
+            }
+        }
+        let _ = self.filehandle.1.print(is_console,if is_console{if is_consolefmt{console.as_str()}else{""}}else{""} , if is_bodyfmt{msg.as_str()}else{message});
     }
 
     pub fn log(&self, level: LEVEL, module: String, message: String) {
@@ -253,12 +316,7 @@ impl Logger {
             }
         }
 
-        let s = log_fmt(self.attrfmt.levelfmt.as_ref(), self.attrfmt.timefmt.as_ref(), fmat, formatter, level, filename, line, message.as_str());
-        if let Some(f) = &self.attrfmt.bodyfmt {
-            f(level, s)
-        } else {
-            s
-        }
+        log_fmt(self.attrfmt.levelfmt.as_ref(), self.attrfmt.timefmt.as_ref(), fmat, formatter, level, filename, line, message.as_str())
     }
 
     pub fn set_printmode(&mut self, mode: PRINTMODE) -> &mut Self {
