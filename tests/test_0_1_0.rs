@@ -28,6 +28,7 @@ fn testlog() {
 async fn asynctestlog() {
     ASYNC_LOG.set_level_option(LEVEL::Info, LevelOption { format: Some(Format::LevelFlag), formatter: None }).await
     .set_level_option(LEVEL::Fatal, LevelOption { format: Some(Format::LevelFlag | Format::Date), formatter: None}).await;
+
     async_trace!("this is async trace log");
     async_debug!("this is async debug log");
     async_info!("this is async info log");
