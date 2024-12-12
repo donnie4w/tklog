@@ -30,7 +30,7 @@
 
 ```rust
 [dependencies]
-tklog = "0.2.7"   #   "0.x.x" current version
+tklog = "0.2.8"   #   "0.x.x" current version
 ```
 
 The simplest way to use tklog involves direct macro calls:
@@ -769,14 +769,9 @@ fn testlog() {
             (now.format("%Y/%m/%d").to_string(), now.format("%H:%M:%S").to_string(), "".to_string())
         });
 
-
-        fmt.set_body_fmt(|level, body| {
-            //Handles the last newline character of the body
-            let trimmed_body = if body.ends_with('\n') {
-                format!("{}{}", body.as_str()[..body.len() - 1].to_string(), "\x1b[0m\n")
-            } else {
-                format!("{}{}", body, "\x1b[0m\n")
-            };
+        fmt.set_console_body_fmt(|level, body| {
+             //Handles the last newline character of the body
+            let trimmed_body = if body.ends_with('\n') { format!("{}{}", body.as_str()[..body.len() - 1].to_string(), "\x1b[0m\n") } else { format!("{}{}", body, "\x1b[0m\n") };
 
             match level {
                 LEVEL::Trace => format!("{}{}", "\x1b[34m", trimmed_body), //blue
@@ -785,6 +780,20 @@ fn testlog() {
                 LEVEL::Warn => format!("{}{}", "\x1b[33m", trimmed_body),  //yellow
                 LEVEL::Error => format!("{}{}", "\x1b[31m", trimmed_body), //red
                 LEVEL::Fatal => format!("{}{}", "\x1b[41m", trimmed_body), //background red
+                LEVEL::Off => "".to_string(),
+            }
+        });
+
+        fmt.set_body_fmt(|level, body| {
+             //Handles the last newline character of the body
+            let trimmed_body = if body.ends_with('\n') { format!("{}{}", body.as_str()[..body.len() - 1].to_string(), "\x1b[0m\n") } else { format!("{}{}", body, "\x1b[0m\n") };
+            match level {
+                LEVEL::Trace => format!("{}{}", "\x1b[44m", trimmed_body), //background blue
+                LEVEL::Debug => format!("{}{}", "\x1b[46m", trimmed_body), //background cyan
+                LEVEL::Info => format!("{}{}", "\x1b[42m", trimmed_body),  //background green
+                LEVEL::Warn => format!("{}{}", "\x1b[43m", trimmed_body),  //background yellow
+                LEVEL::Error => format!("{}{}", "\x1b[41m", trimmed_body), //background red
+                LEVEL::Fatal => format!("{}{}", "\x1b[45m", trimmed_body), //background purple
                 LEVEL::Off => "".to_string(),
             }
         });
