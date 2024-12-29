@@ -72,7 +72,7 @@ impl FileOption for FileOptionType {
 
 pub struct FileTimeMode {
     filename: String, //Log file path
-    mode: MODE,       //Maximum size for each log file to be saved
+    mode: MODE,       //Scroll backup files by time, hour, day, month
     max_backups: u32, //The maximum number of old log files that can be retained
     compress: bool,   //Whether to compress old log files
 }
@@ -145,6 +145,46 @@ impl FileOption for FileSizeMode {
 impl FileSizeMode {
     pub fn new(filename: &str, maxsize: u64, maxbackups: u32, compress: bool) -> Self {
         FileSizeMode { filename: filename.to_string(), max_size: maxsize, max_backups: maxbackups, compress }
+    }
+}
+
+pub struct FileMixedMode {
+    filename: String, //Log file path
+    max_size: u64,    //Maximum size for each log file to be saved
+    mode: MODE,       ////Scroll backup files by time, hour, day, month
+    max_backups: u32, //The maximum number of old log files that can be retained
+    compress: bool,   //Whether to compress old log files
+}
+
+impl FileOption for FileMixedMode {
+    fn mode(&self) -> CUTMODE {
+        return CUTMODE::MIXED;
+    }
+
+    fn timemode(&self) -> MODE {
+        return self.mode;
+    }
+
+    fn filename(&self) -> String {
+        return self.filename.clone();
+    }
+
+    fn size(&self) -> u64 {
+        return self.max_size;
+    }
+
+    fn maxbackups(&self) -> u32 {
+        return self.max_backups;
+    }
+
+    fn compress(&self) -> bool {
+        return self.compress;
+    }
+}
+
+impl FileMixedMode {
+    pub fn new(filename: &str, maxsize: u64, mode: MODE, maxbackups: u32, compress: bool) -> Self {
+        FileMixedMode { filename: filename.to_string(), max_size: maxsize, mode: mode, max_backups: maxbackups, compress }
     }
 }
 
