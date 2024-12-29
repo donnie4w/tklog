@@ -1,15 +1,16 @@
 
-### tklog 是一款 Rust 语言编写的高性能结构化日志库。[[English]](https://github.com/donnie4w/tklog/blob/main/README.md "[English]")
+### tklog 是Rust语言编写的高性能结构化日志库 [[English]](https://github.com/donnie4w/tklog/blob/main/README.md "[English]")
 
-`易用`，`高效`，`结构化`，`控制台日志`，`文件日志`，`文件切割`，`文件压缩`，`同步打印`，`异步打印`
+##### 特点：`易用`，`高效`，`结构化`，`控制台日志`，`文件日志`，`文件切割`，`文件压缩`，`同步打印`，`异步打印`
 
-#####   特性
+##### 功能特性
 
 - 功能：控制台日志、文件日志、同步打印、异步打印
 - 日志级别配置灵活：支持 `trace`、`debug`、`info`、`warn`、`error`、`fatal` 级别的日志输出
 - 格式化输出自定义：可调整日志输出格式，涵盖日志级别标签、时间格式、文件位置等元素
 - 按时间切割日志文件：支持按小时、天、月进行日志文件分割
 - 按大小切割日志文件：根据文件大小自动分割
+- 按时间与文件大小混合模式切割日志文件
 - 文件数管理：可设定最大备份文件数，自动删除旧日志，避免过多日志文件累积
 - 文件压缩功能：支持对归档日志文件进行压缩
 - 支持官方日志库标准API
@@ -29,7 +30,7 @@
 
 ```rust
 [dependencies]
-tklog = "0.2.8"   #   "0.x.x" current version
+tklog = "0.2.9"   #   "0.x.x" current version
 ```
 
 最简单常用的方式：**直接调用**
@@ -85,7 +86,7 @@ use tklog::{
 };
 fn testmutlilog() {
     let mut log = Logger::new();
-    log.set_console(true)
+    log.set_console(true) //控制台打印
         .set_level(LEVEL::Debug) //定义日志级别为Debug
         .set_cutmode_by_time("tklogs.log", MODE::DAY, 10, true)   //分割日志文件的方式为按天分割，保留最多10个备份，并压缩备份文件
         .set_formatter("{message} | {time} {file}{level}\n");  //自定义日志结构信息的输入顺序与附加内容
@@ -126,7 +127,7 @@ fatals>>>>,FFFFFFFF,1,2,3,8 | 2024-05-26 14:13:25 testlog.rs 74[FATAL]
 
 **调用 .set_console(bool) 函数**
 
-		LOG.set_console(false)   // false表示不打印控制台日志。默认为true
+		LOG.set_console(false)   // false表示不打印控制台日志。（默认为true）
 
 #### 3. 日志格式
 
@@ -142,7 +143,7 @@ fatals>>>>,FFFFFFFF,1,2,3,8 | 2024-05-26 14:13:25 testlog.rs 74[FATAL]
 
 ####  4.自定义格式输出
 
-**默认："{level}{time} {file}:{message} "**
+**默认："{level}{time} {file}:{message} \n"**
 
 - {level}            日志级别信息：如[Debug]
 - {time}            日志时间信息
@@ -207,6 +208,50 @@ fatals>>>>,FFFFFFFF,1,2,3,8 | 2024-05-26 14:13:25 testlog.rs 74[FATAL]
 - tklogs_1.log.gz
 - tklogs_2.log.gz
 - tklogs_3.log.gz
+
+
+####  7.按时间大小混合模式分割日志文件
+
+###### 调用 .set_cutmode_by_mixed() 函数，参数：
+
+- 文件路径
+- 指定文件滚动大小
+- 时间模式
+- 最大备份日志文件数
+- 是否压缩备份的日志文件
+
+**示例**
+
+    let mut log = Logger::new();
+    log.set_cutmode_by_mixed("/usr/local/tklogs.log",1<<30, MODE::DAY, 10, true)
+
+###### 说明：备份文件路径为： /usr/local/tklogs.log ，1G(1<<30)大小时滚动备份文件， 滚动时间模式为：按天备份，参数10表示最多保留10个最近备份文件，true表示压缩备份日志文件
+
+##### 备份的文件格式：
+
+- 按天与大小混合备份日期文件，如：
+	- tklogs_20240521_1.log
+    - tklogs_20240521_2.log
+    - tklogs_20240521_3.log
+    - tklogs_20240521_4.log
+	- tklogs_20240522_1.log
+    - tklogs_20240522_2.log
+    - tklogs_20240522_3.log
+    - tklogs_20240522_4.log
+- 按小时与大小混合备份日志文件，如：
+	- tklogs_2024052110_1.log
+    - tklogs_2024052110_2.log
+    - tklogs_2024052110_3.log
+	- tklogs_2024052211_1.log
+    - tklogs_2024052211_2.log
+    - tklogs_2024052211_3.log
+- 按月份与大小混合备份日志文件，如：
+	- tklogs_202403_1.log
+    - tklogs_202403_2.log
+    - tklogs_202403_3.log
+	- tklogs_202404_1.log
+    - tklogs_202404_2.log
+    - tklogs_202404_3.log
 
 ------------
 
@@ -362,28 +407,115 @@ async fn test_synclog() {
 
 ------------
 
-## 模块设置独立日志参数
+## 支持 `LogOption` 参数集中设置tklog的日志参数
+##### 通过设置`LogOption`，可以达到与调用以下函数相同效果
+- `set_console`
+- `set_level`
+- `set_format`
+- `set_formatter`
+- `set_cutmode_by_size`
+- `set_cutmode_by_time`
+- `set_cutmode_by_mixed` 
 
-1. tklog提供了`set_option`与`set_mod_option` 设置Logger对象的全局日志参数和指定mod的日志参数
-2. 在项目中，可以使用全局LOG对象，同时对多个mod设置独立的日志参数
-3. 不同mod可以设置不同的日志级别，日志格式，日志文件等
-4. 异步全局对象ASYNC_LOG的mod日志参数设置与同步LOG相同
-
-
-#####  `set_option` 示例：
-
-	tklog::LOG.set_option(LogOption{level:Some(LEVEL::Debug),console: Some(false),format:None,formatter:None,fileoption: Some(Box::new(FileTimeMode::new("day.log",tklog::MODE::DAY,0,true)))});
-
-##### LogOption对象说明
+##### `LogOption`对象属性说明
 
 - level      日志级别
 - format    日志格式
 - formatter   日志输出自定义格式
 - console    控制台日志设置
-- fileoption		文件日志设置
+- fileoption 文件日志设置
+
+### 通过`set_option`设置`LogOption`对象， 示例：
+
+以下是配置日志记录器使用不同文件滚动模式和备份策略的示例。每个示例都设置了特定的日志选项，包括日志级别、控制台输出设置和文件滚动行为。
+
+#### 1. 按时间滚动备份文件 (`FileTimeMode`)
+
+此配置根据指定的时间模式（例如，按天）来滚动日志文件。
+
+```rust
+tklog::LOG.set_option(LogOption {
+    level: Some(LEVEL::Debug), // 设置日志级别为 Debug
+    console: Some(false),     // 禁用控制台输出
+    format: None,             // 使用默认日志格式
+    formatter: None,          // 使用默认日志格式化器
+    fileoption: Some(Box::new(FileTimeMode::new(
+        "day.log",            // 日志文件名
+        tklog::MODE::DAY,     // 每天滚动一次
+        10,                   // 最多保留10个备份文件
+        true                  // 压缩备份文件
+    ))),
+});
+```
+
+#### 2. 按大小滚动备份文件 (`FileSizeMode`)
+
+此配置在日志文件达到指定大小限制时进行滚动。
+
+```rust
+tklog::LOG.set_option(LogOption {
+    level: Some(LEVEL::Debug), // 设置日志级别为 Debug
+    console: Some(false),     // 禁用控制台输出
+    format: None,             // 使用默认日志格式
+    formatter: None,          // 使用默认日志格式化器
+    fileoption: Some(Box::new(FileSizeMode::new(
+        "day.log",            // 日志文件名
+        1 << 30,              // 文件大小达到1GB (1<<30字节)时滚动
+        10,                   // 最多保留10个备份文件
+        true                  // 压缩备份文件
+    ))),
+});
+```
+
+#### 3. 按大小与时间混合滚动备份文件 (`FileMixedMode`)
+
+此配置结合了大小和时间两个标准来进行日志文件的滚动。
+
+```rust
+tklog::LOG.set_option(LogOption {
+    level: Some(LEVEL::Debug), // 设置日志级别为 Debug
+    console: Some(false),     // 禁用控制台输出
+    format: None,             // 使用默认日志格式
+    formatter: None,          // 使用默认日志格式化器
+    fileoption: Some(Box::new(FileMixedMode::new(
+        "day.log",            // 日志文件名
+        1 << 30,              // 文件大小达到1GB (1<<30字节)时滚动
+        tklog::MODE::DAY,     // 同时每天滚动一次
+        10,                   // 最多保留10个备份文件
+        true                  // 压缩备份文件
+    ))),
+});
+```
+
+### 说明
+
+- **日志级别 (`level`)**：指定了最低的日志严重性级别，只有不低于该级别的消息才会被记录。这里设置为 `Debug`，意味着所有调试级别及更高级别的消息都会被记录。
+  
+- **控制台输出 (`console`)**：决定了日志是否也打印到控制台。在此处设置为禁用 (`false`)。
+
+- **格式和格式化器 (`format`, `formatter`)**：这些字段设置为 `None`，表示将使用默认的日志格式和格式化器。
+
+- **文件选项 (`fileoption`)**：这个字段指定了处理日志文件的策略，包括：
+  - **FileTimeMode**：基于时间表（如每日）滚动日志文件。
+  - **FileSizeMode**：当文件达到一定大小（如1GB）时滚动日志文件。
+  - **FileMixedMode**：结合大小和时间两个条件滚动日志文件。
+
+每个 `fileoption` 接受定义日志文件名、滚动条件（大小或时间）、最多保留的备份文件数量以及是否压缩备份文件的参数。对于 `FileMixedMode`，还需要一个时间模式参数来指定时间滚动模式。
+
+通过这些配置，可以灵活地管理和优化日志文件的生成和存储方式，以满足不同的应用场景需求。
 
 
-#####  `set_mod_option` 示例：
+------------
+
+## 模块设置独立日志参数 `set_mod_option`
+
+1. tklog支持通过`set_mod_option` 设置指定mod的日志参数
+2. `set_mod_option`可以指定具体模块名并设置该模块特定的日志参数，只作用与该模块
+3. `set_mod_option`支持前缀匹配的设置模式，如 "testlog::*"，指作用与模块testlog下的所有子模块
+4. 在项目中，可以使用全局LOG对象，同时对多个mod设置独立的日志参数
+5. 异步全局对象ASYNC_LOG的mod日志参数设置与同步LOG相同
+
+#####  `set_mod_option` 示例1：
 
 	tklog::LOG.set_mod_option("testlog::module1",LogOption{level:Some(LEVEL::Debug),console: Some(false),format:None,formatter:None,fileoption: Some(Box::new(FileTimeMode::new("day.log", tklog::MODE::DAY, 0,true)))});
 
@@ -568,7 +700,7 @@ async fn testformats() {
 
 ------
 
-## tklog 支持自定义日志处理函数
+## tklog 支持自定义日志处理函数 `set_custom_handler`
 
 ###### tklog 通过 `set_custom_handler()` 添加外部自定义函数，控制日志处理的流程与逻辑
 
@@ -651,7 +783,7 @@ fn testlog() {
 [FATAL] 2024-08-15 14:14:19.289802 tests\testsynclog.rs 29:fatal>>>>,ffffffff,1,2,3,8
 ```
 
-## tklog 支持日志级别设置独立日志格式参数
+## tklog 支持日志级别设置独立日志格式参数 `set_level_option`
 
 ###### tklog 通过 `set_level_option()` 设置日志级别的独立日志参数
 
@@ -711,7 +843,7 @@ fn testlog() {
 
 ------------
 
-## tklog 支持对日志属性标识进行格式化设置
+## tklog 支持对日志属性标识进行格式化设置 `set_attr_format`
 
 ##### 通过 `set_attr_format` 函数设置日志标识与时间格式
 
