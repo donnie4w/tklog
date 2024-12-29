@@ -14,7 +14,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 use std::collections::HashMap;
 
 use crate::asyncfile::FileHandler;
@@ -91,9 +90,9 @@ impl Logger {
 
     pub async fn print(&mut self, level: LEVEL, module: &str, message: &str) {
         let mut console = String::new();
-        let mut msg =String::new();
+        let mut msg = String::new();
         let mut is_bodyfmt = false;
-        
+
         if let Some(f) = &self.attrfmt.bodyfmt {
             is_bodyfmt = true;
             msg = f(level, message.to_string());
@@ -115,10 +114,40 @@ impl Logger {
                 }
                 if filename != "" {
                     if *filename == self.filehandle.0 {
-                        let _ = self.filehandle.1.async_print(is_mod_console,if is_mod_console{if is_consolefmt{console.as_str()}else{""}}else{""} , if is_bodyfmt{msg.as_str()}else{message}).await;
+                        let _ = self
+                            .filehandle
+                            .1
+                            .async_print(
+                                is_mod_console,
+                                if is_mod_console {
+                                    if is_consolefmt {
+                                        console.as_str()
+                                    } else {
+                                        ""
+                                    }
+                                } else {
+                                    ""
+                                },
+                                if is_bodyfmt { msg.as_str() } else { message },
+                            )
+                            .await;
                     } else {
                         if let Some(fm) = self.fmap.get_mut(filename) {
-                            let _ = fm.async_print(is_mod_console,if is_mod_console{if is_consolefmt{console.as_str()}else{""}}else{""} , if is_bodyfmt{msg.as_str()}else{message}).await;
+                            let _ = fm
+                                .async_print(
+                                    is_mod_console,
+                                    if is_mod_console {
+                                        if is_consolefmt {
+                                            console.as_str()
+                                        } else {
+                                            ""
+                                        }
+                                    } else {
+                                        ""
+                                    },
+                                    if is_bodyfmt { msg.as_str() } else { message },
+                                )
+                                .await;
                         }
                     }
                     return;
@@ -133,7 +162,7 @@ impl Logger {
                 let mut is_consolefmt = false;
                 if let Some(cs) = lo.console {
                     is_level_console = cs;
-                    if is_level_console && console.is_empty(){
+                    if is_level_console && console.is_empty() {
                         if let Some(f) = &self.attrfmt.console_bodyfmt {
                             is_consolefmt = true;
                             console = f(level, message.to_string());
@@ -142,10 +171,40 @@ impl Logger {
                 }
                 if filename != "" {
                     if *filename == self.filehandle.0 {
-                        let _ = self.filehandle.1.async_print(is_level_console,if is_level_console{if is_consolefmt{console.as_str()}else{""}}else{""} , if is_bodyfmt{msg.as_str()}else{message}).await;
+                        let _ = self
+                            .filehandle
+                            .1
+                            .async_print(
+                                is_level_console,
+                                if is_level_console {
+                                    if is_consolefmt {
+                                        console.as_str()
+                                    } else {
+                                        ""
+                                    }
+                                } else {
+                                    ""
+                                },
+                                if is_bodyfmt { msg.as_str() } else { message },
+                            )
+                            .await;
                     } else {
                         if let Some(fm) = self.fmap.get_mut(filename) {
-                            let _ = fm.async_print(is_level_console,if is_level_console{if is_consolefmt{console.as_str()}else{""}}else{""} , if is_bodyfmt{msg.as_str()}else{message}).await;
+                            let _ = fm
+                                .async_print(
+                                    is_level_console,
+                                    if is_level_console {
+                                        if is_consolefmt {
+                                            console.as_str()
+                                        } else {
+                                            ""
+                                        }
+                                    } else {
+                                        ""
+                                    },
+                                    if is_bodyfmt { msg.as_str() } else { message },
+                                )
+                                .await;
                         }
                     }
                     return;
@@ -153,7 +212,7 @@ impl Logger {
             }
         }
 
-        let  is_console = self.fmthandle.get_console();
+        let is_console = self.fmthandle.get_console();
         let mut is_consolefmt = false;
         if is_console && console.is_empty() {
             if let Some(f) = &self.attrfmt.console_bodyfmt {
@@ -161,16 +220,32 @@ impl Logger {
                 console = f(level, message.to_string());
             }
         }
-        let _ = self.filehandle.1.async_print(is_console,if is_console{if is_consolefmt{console.as_str()}else{""}}else{""} , if is_bodyfmt{msg.as_str()}else{message}).await;
+        let _ = self
+            .filehandle
+            .1
+            .async_print(
+                is_console,
+                if is_console {
+                    if is_consolefmt {
+                        console.as_str()
+                    } else {
+                        ""
+                    }
+                } else {
+                    ""
+                },
+                if is_bodyfmt { msg.as_str() } else { message },
+            )
+            .await;
     }
 
     pub async fn safeprint(&mut self, level: LEVEL, module: &str, message: &str) {
         let _mutex_guard = self.mutex.lock().await;
-        
+
         let mut console = String::new();
-        let mut msg =String::new();
+        let mut msg = String::new();
         let mut is_bodyfmt = false;
-        
+
         if let Some(f) = &self.attrfmt.bodyfmt {
             is_bodyfmt = true;
             msg = f(level, message.to_string());
@@ -192,10 +267,40 @@ impl Logger {
                 }
                 if filename != "" {
                     if *filename == self.filehandle.0 {
-                        let _ = self.filehandle.1.async_print(is_mod_console,if is_mod_console{if is_consolefmt{console.as_str()}else{""}}else{""} , if is_bodyfmt{msg.as_str()}else{message}).await;
+                        let _ = self
+                            .filehandle
+                            .1
+                            .async_print(
+                                is_mod_console,
+                                if is_mod_console {
+                                    if is_consolefmt {
+                                        console.as_str()
+                                    } else {
+                                        ""
+                                    }
+                                } else {
+                                    ""
+                                },
+                                if is_bodyfmt { msg.as_str() } else { message },
+                            )
+                            .await;
                     } else {
                         if let Some(fm) = self.fmap.get_mut(filename) {
-                            let _ = fm.async_print(is_mod_console,if is_mod_console{if is_consolefmt{console.as_str()}else{""}}else{""} , if is_bodyfmt{msg.as_str()}else{message}).await;
+                            let _ = fm
+                                .async_print(
+                                    is_mod_console,
+                                    if is_mod_console {
+                                        if is_consolefmt {
+                                            console.as_str()
+                                        } else {
+                                            ""
+                                        }
+                                    } else {
+                                        ""
+                                    },
+                                    if is_bodyfmt { msg.as_str() } else { message },
+                                )
+                                .await;
                         }
                     }
                     return;
@@ -210,7 +315,7 @@ impl Logger {
                 let mut is_consolefmt = false;
                 if let Some(cs) = lo.console {
                     is_level_console = cs;
-                    if is_level_console && console.is_empty(){
+                    if is_level_console && console.is_empty() {
                         if let Some(f) = &self.attrfmt.console_bodyfmt {
                             is_consolefmt = true;
                             console = f(level, message.to_string());
@@ -219,10 +324,40 @@ impl Logger {
                 }
                 if filename != "" {
                     if *filename == self.filehandle.0 {
-                        let _ = self.filehandle.1.async_print(is_level_console,if is_level_console{if is_consolefmt{console.as_str()}else{""}}else{""} , if is_bodyfmt{msg.as_str()}else{message}).await;
+                        let _ = self
+                            .filehandle
+                            .1
+                            .async_print(
+                                is_level_console,
+                                if is_level_console {
+                                    if is_consolefmt {
+                                        console.as_str()
+                                    } else {
+                                        ""
+                                    }
+                                } else {
+                                    ""
+                                },
+                                if is_bodyfmt { msg.as_str() } else { message },
+                            )
+                            .await;
                     } else {
                         if let Some(fm) = self.fmap.get_mut(filename) {
-                            let _ = fm.async_print(is_level_console,if is_level_console{if is_consolefmt{console.as_str()}else{""}}else{""} , if is_bodyfmt{msg.as_str()}else{message}).await;
+                            let _ = fm
+                                .async_print(
+                                    is_level_console,
+                                    if is_level_console {
+                                        if is_consolefmt {
+                                            console.as_str()
+                                        } else {
+                                            ""
+                                        }
+                                    } else {
+                                        ""
+                                    },
+                                    if is_bodyfmt { msg.as_str() } else { message },
+                                )
+                                .await;
                         }
                     }
                     return;
@@ -230,7 +365,7 @@ impl Logger {
             }
         }
 
-        let  is_console = self.fmthandle.get_console();
+        let is_console = self.fmthandle.get_console();
         let mut is_consolefmt = false;
         if is_console && console.is_empty() {
             if let Some(f) = &self.attrfmt.console_bodyfmt {
@@ -238,7 +373,23 @@ impl Logger {
                 console = f(level, message.to_string());
             }
         }
-        let _ = self.filehandle.1.async_print(is_console,if is_console{if is_consolefmt{console.as_str()}else{""}}else{""} , if is_bodyfmt{msg.as_str()}else{message}).await;
+        let _ = self
+            .filehandle
+            .1
+            .async_print(
+                is_console,
+                if is_console {
+                    if is_consolefmt {
+                        console.as_str()
+                    } else {
+                        ""
+                    }
+                } else {
+                    ""
+                },
+                if is_bodyfmt { msg.as_str() } else { message },
+            )
+            .await;
     }
 
     pub fn log(&self, level: LEVEL, module: String, message: String) {
@@ -357,6 +508,14 @@ impl Logger {
         self
     }
 
+    pub async fn set_cutmode_by_mixed(&mut self, filename: &str, maxsize: u64, mode: MODE, maxbackups: u32, compress: bool) -> &mut Self {
+        let ftm = FileOptionType::new(crate::CUTMODE::MIXED, mode, filename, maxsize, maxbackups, compress);
+        let fh = FileHandler::new(Box::new(ftm)).await;
+        self.filehandle.0 = filename.to_string();
+        self.filehandle.1.set_async_file_handler(fh.unwrap());
+        self
+    }
+
     pub async fn set_option(&mut self, option: LogOption) -> &mut Self {
         if let Some(v) = option.console {
             self.fmthandle.set_console(v);
@@ -425,7 +584,7 @@ impl Logger {
         if self.levels.is_none() {
             self.levels = Some(std::array::from_fn(|_| None));
         }
-        
+
         if let Some(levels) = &mut self.levels {
             levels[level as usize - 1] = Some((lo, filename));
         }
@@ -503,6 +662,13 @@ impl Log {
     pub async fn set_cutmode_by_time(&self, filename: &str, mode: MODE, maxbackups: u32, compress: bool) -> &Self {
         unsafe {
             asynclog.set_cutmode_by_time(filename, mode, maxbackups, compress).await;
+        }
+        self
+    }
+
+    pub async fn set_cutmode_by_mixed(&self, filename: &str, maxsize: u64, mode: MODE, maxbackups: u32, compress: bool) -> &Self {
+        unsafe {
+            asynclog.set_cutmode_by_mixed(filename, maxsize, mode, maxbackups, compress).await;
         }
         self
     }
