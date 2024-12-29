@@ -277,6 +277,7 @@ pub enum MODE {
 pub enum CUTMODE {
     TIME,
     SIZE,
+    MIXED,
 }
 
 // fn timenow() -> (String, String, String) {
