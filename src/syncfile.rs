@@ -97,6 +97,7 @@ impl FileHandler {
         match self.cutmode {
             CUTMODE::TIME => rename(&log_path, self.compress, self.max_backups, Some(getbackup_with_time(self.startsec, self.timemode))),
             CUTMODE::SIZE => rename(&log_path, self.compress, self.max_backups, None),
+            CUTMODE::MIXED=>rename(&log_path, self.compress, self.max_backups, Some(getbackup_with_time(self.startsec, self.timemode))),
         }
     }
 
@@ -114,6 +115,14 @@ impl FileHandler {
                 if self.max_size > 0 && self.filesize + data.len() as u64 > self.max_size {
                     if let Ok(_) = self.rename() {
                         let _ = self.new_from_clone();
+                    }
+                }
+            }
+            CUTMODE::MIXED=> {
+                if passtimemode(self.startsec, self.timemode)|| self.max_size > 0 && self.filesize + data.len() as u64 > self.max_size{
+                    if let Ok(_) = self.rename() {
+                        let _ = self.new_from_clone();
+                        self.startsec = timesec();
                     }
                 }
             }
