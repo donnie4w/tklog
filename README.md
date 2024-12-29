@@ -1,20 +1,24 @@
 
 ### tklog is a high-performance structured logging library  for Rust  [[中文]](https://github.com/donnie4w/tklog/blob/main/README_ZH.md "[中文]")
 
-###### tklog featuring ease-of-use, efficiency, and a rich feature suite. It supports functionalities such as console logging, file logging, both synchronous and asynchronous logging modes, alongside advanced capabilities like log slicing by time or size and compressed backup of log files.
+##### `Easy to use`, `Efficient`, `Structured`, `Console logging`, `File logging`, `File rotation`, `File compression`, `Synchronous logging`, `Asynchronous logging`
 
-#### Features
-- Function support includes console logging, file logging, synchronous logging, asynchronous logging.
-- Log level settings mirror those of the standard library: trace, debug, info, warn, error, fatal.
-- Formatted output with customizable formats that can include log level flags, formatted timestamps, and log file locations.
-- Log file slicing by time intervals: hourly, daily, or monthly.
-- Log file slicing by specified file size.
-- File rolling mechanism that automatically deletes older log files once a maximum backup count is reached to prevent excess logs from accumulating.
-- Compression of archived backup log files.
-- Supports the official log library standard API
-- Independent log parameters can be set by module
-- Independent log parameters can be set by log level
-- The environment variable RUST_LOG is supported for setting the log level.
+##### Features
+
+- Functionality: Console logging, File logging, Synchronous logging, Asynchronous logging
+- Flexible log level configuration: Supports `trace`, `debug`, `info`, `warn`, `error`, and `fatal` log levels.
+- Customizable output formatting: Adjust the log output format, including log level tags, time format, file locations, etc.
+- Log file rotation by time: Supports rotating log files by hour, day, or month.
+- Log file rotation by size: Automatically rotates log files based on file size.
+- Hybrid time and size-based log rotation: Supports mixed log rotation based on both time and size.
+- File count management: Allows setting a maximum number of backup log files and automatically deletes old logs to avoid excessive file accumulation.
+- File compression: Supports compressing archived log files.
+- Supports the official logging library’s standard API.
+- Supports independent log parameters for individual modules.
+- Supports independent log parameters for different log levels.
+- Supports setting the log level using the environment variable `RUST_LOG`.
+
+---
 
 ### [official website](https://tlnet.top/tklogen "official website")
 
@@ -30,7 +34,7 @@
 
 ```rust
 [dependencies]
-tklog = "0.2.8"   #   "0.x.x" current version
+tklog = "0.2.9"   #   "0.x.x" current version
 ```
 
 The simplest way to use tklog involves direct macro calls:
@@ -229,6 +233,53 @@ tklogs_1.log.gz
 tklogs_2.log.gz
 tklogs_3.log.gz
 ```
+#### 7. Split Log Files by Mixed Mode Based on Time and Size
+
+##### Calling the `.set_cutmode_by_mixed()` Function, Parameters Include:
+
+- **File Path**: The path to the log file.
+- **Specified File Roll Size**: The size at which the log file should roll over.
+- **Time Mode**: Defines the time-based rolling pattern (e.g., daily, hourly, monthly).
+- **Maximum Number of Backup Log Files**: The maximum number of backup files to retain.
+- **Whether to Compress Backup Log Files**: Boolean value indicating if the backup log files should be compressed.
+
+**Example**
+
+```rust
+let mut log = Logger::new();
+log.set_cutmode_by_mixed("/usr/local/tklogs.log", 1 << 30, MODE::DAY, 10, true);
+```
+
+##### Explanation: 
+The backup file path is `/usr/local/tklogs.log`. The log file will roll over when it reaches 1GB (1<<30) in size. The rolling time mode is set to daily backups. The parameter `10` indicates that a maximum of 10 recent backup files will be retained. The parameter `true` indicates that backup log files will be compressed.
+
+##### Backup File Naming Format:
+
+- **Mixed Backup by Day and Size**, for example:
+  - `tklogs_20240521_1.log`
+  - `tklogs_20240521_2.log`
+  - `tklogs_20240521_3.log`
+  - `tklogs_20240521_4.log`
+  - `tklogs_20240522_1.log`
+  - `tklogs_20240522_2.log`
+  - `tklogs_20240522_3.log`
+  - `tklogs_20240522_4.log`
+
+- **Mixed Backup by Hour and Size**, for example:
+  - `tklogs_2024052110_1.log`
+  - `tklogs_2024052110_2.log`
+  - `tklogs_2024052110_3.log`
+  - `tklogs_2024052211_1.log`
+  - `tklogs_2024052211_2.log`
+  - `tklogs_2024052211_3.log`
+
+- **Mixed Backup by Month and Size**, for example:
+  - `tklogs_202403_1.log`
+  - `tklogs_202403_2.log`
+  - `tklogs_202403_3.log`
+  - `tklogs_202404_1.log`
+  - `tklogs_202404_2.log`
+  - `tklogs_202404_3.log`
 
 **Log Printing Methods:**
 
@@ -382,31 +433,118 @@ async fn test_synclog() {
 }
 ```
 
-------------
+---
 
+## Supports centralized configuration of `tklog` log parameters via `LogOption`
+
+##### By setting `LogOption`, you can achieve the same effect as calling the following functions:
+- `set_console`
+- `set_level`
+- `set_format`
+- `set_formatter`
+- `set_cutmode_by_size`
+- `set_cutmode_by_time`
+- `set_cutmode_by_mixed`
+
+##### Description of `LogOption` object properties:
+
+- **level**: Log level
+- **format**: Log format
+- **formatter**: Custom log output format
+- **console**: Console logging settings
+- **fileoption**: File logging settings
+
+### Set `LogOption` object using `set_option`, Example:
+
+Below are examples of configuring the logger to use different file rotation modes and backup strategies. Each example sets specific log options, including log level, console output settings, and file rotation behavior.
+
+#### 1. Log file rotation by time (`FileTimeMode`)
+
+This configuration rolls over log files based on the specified time mode (e.g., daily).
+
+```rust
+tklog::LOG.set_option(LogOption {
+    level: Some(LEVEL::Debug), // Set log level to Debug
+    console: Some(false),      // Disable console output
+    format: None,              // Use default log format
+    formatter: None,           // Use default log formatter
+    fileoption: Some(Box::new(FileTimeMode::new(
+        "day.log",             // Log file name
+        tklog::MODE::DAY,      // Roll over every day
+        10,                    // Keep a maximum of 10 backup files
+        true                   // Compress backup files
+    ))),
+});
+```
+
+#### 2. Log file rotation by size (`FileSizeMode`)
+
+This configuration rolls over log files when the file size reaches a specified limit.
+
+```rust
+tklog::LOG.set_option(LogOption {
+    level: Some(LEVEL::Debug), // Set log level to Debug
+    console: Some(false),      // Disable console output
+    format: None,              // Use default log format
+    formatter: None,           // Use default log formatter
+    fileoption: Some(Box::new(FileSizeMode::new(
+        "day.log",             // Log file name
+        1 << 30,               // Roll over when the file size reaches 1GB (1<<30 bytes)
+        10,                    // Keep a maximum of 10 backup files
+        true                   // Compress backup files
+    ))),
+});
+```
+
+#### 3. Log file rotation by both size and time (`FileMixedMode`)
+
+This configuration combines both size and time criteria for log file rotation.
+
+```rust
+tklog::LOG.set_option(LogOption {
+    level: Some(LEVEL::Debug), // Set log level to Debug
+    console: Some(false),      // Disable console output
+    format: None,              // Use default log format
+    formatter: None,           // Use default log formatter
+    fileoption: Some(Box::new(FileMixedMode::new(
+        "day.log",             // Log file name
+        1 << 30,               // Roll over when the file size reaches 1GB (1<<30 bytes)
+        tklog::MODE::DAY,      // Also roll over every day
+        10,                    // Keep a maximum of 10 backup files
+        true                   // Compress backup files
+    ))),
+});
+```
+
+### Explanation:
+
+- **Log Level (`level`)**: Specifies the minimum log severity level; only messages of this level or higher will be logged. Here it is set to `Debug`, so all messages of `Debug` level and higher will be logged.
+  
+- **Console Output (`console`)**: Determines whether logs are printed to the console. In this example, console output is disabled (`false`).
+
+- **Format and Formatter (`format`, `formatter`)**: These fields are set to `None`, indicating that the default log format and formatter will be used.
+
+- **File Options (`fileoption`)**: This field specifies the file logging strategy, including:
+  - **FileTimeMode**: Rolls over the log file based on a time schedule (e.g., daily).
+  - **FileSizeMode**: Rolls over the log file when the file size reaches a specified limit.
+  - **FileMixedMode**: Combines both time and size-based rolling for log files.
+
+Each `fileoption` accepts parameters such as the log file name, the rolling criteria (size or time), the maximum number of backup files to keep, and whether to compress the backup files. For `FileMixedMode`, an additional time mode parameter is needed to specify the time-based rolling behavior.
+
+These configurations allow for flexible log file management, ensuring that log files are stored efficiently and don't consume too much disk space, while also providing detailed control over how and when log files are rolled over and archived.
+
+------
 
 ## The module sets  log parameters
 
-1. tklog provides `set_option` and `set_mod_option` to set the global log parameters of the Logger object and specify the log parameters of the mod
-2. In the project, you can use the global LOG object to set  log parameters for multiple mod at the same time
-3. Different mod can set different log level, log formats, log file, etc
-4. The log parameter of mod  for ASYNC_LOG is the same as LOG object
+1. `tklog` supports setting log parameters for a specific module using `set_mod_option`.
+2. `set_mod_option` allows specifying a particular module name and setting log parameters for that module only, affecting only that module.
+3. `set_mod_option` supports prefix matching, such as `"testlog::*"`, which applies to all submodules under the `testlog` module.
+4. In a project, you can use the global `LOG` object while setting independent log parameters for multiple modules.
+5. The module log parameter settings for the asynchronous global object `ASYNC_LOG` are the same as for the synchronous `LOG`.
 
 
-#####  `set_option` example：
-
-	tklog::LOG.set_option(LogOption{level:Some(LEVEL::Debug),console: Some(false),format:None,formatter:None,fileoption: Some(Box::new(FileTimeMode::new("day.log",tklog::MODE::DAY,0,true)))});
-
-##### LogOption instruction
-
-- level      level of  log
-- format    format of log
-- formatter   user-defined log output format
-- console    console log setting
-- fileoption		file log setting
-
-
-#####  `set_mod_option` example：
+#####  `set_mod_option` example1：
 
 	tklog::LOG.set_mod_option("testlog::module1",LogOption{level:Some(LEVEL::Debug),console: Some(false),format:None,formatter:None,fileoption: Some(Box::new(FileTimeMode::new("day.log", tklog::MODE::DAY, 0,true)))});
 
