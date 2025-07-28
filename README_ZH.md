@@ -30,7 +30,7 @@
 
 ```rust
 [dependencies]
-tklog = "0.2.9"   #   "0.x.x" current version
+tklog = "0.3.0"   #   "0.x.x" current version
 ```
 
 最简单常用的方式：**直接调用**

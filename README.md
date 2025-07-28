@@ -1,5 +1,5 @@
 
-### tklog is a high-performance structured logging library  for Rust  [[中文]](https://github.com/donnie4w/tklog/blob/main/README_ZH.md "[中文]")
+### tklog is a high-performance structured logging library for Rust [[中文]](https://github.com/donnie4w/tklog/blob/main/README_ZH.md "[中文]")
 
 ##### `Easy to use`, `Efficient`, `Structured`, `Console logging`, `File logging`, `File rotation`, `File compression`, `Synchronous logging`, `Asynchronous logging`
 
@@ -34,7 +34,7 @@
 
 ```rust
 [dependencies]
-tklog = "0.2.9"   #   "0.x.x" current version
+tklog = "0.3.0"   #   "0.x.x" current version
 ```
 
 The simplest way to use tklog involves direct macro calls:

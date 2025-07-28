@@ -363,13 +363,22 @@ fn parse_and_format_log(format_str: &str, level: &str, time: &str, file: &str, m
         if in_placeholder {
             if c == '}' {
                 in_placeholder = false;
-                match placeholder.as_str() {
+                let pd = placeholder.as_str();
+                match pd {
                     "level" => result.push_str(level),
                     "time" => result.push_str(time),
                     "file" => result.push_str(file),
                     "message" => result.push_str(message),
-                    _ => (),
+                    _ => {
+                        result.push('{');
+                        result.push_str(pd);
+                        result.push('}');
+                    }
                 }
+                placeholder.clear();
+            } else if c == '{' {
+                result.push('{');
+                result.push_str(placeholder.as_str());
                 placeholder.clear();
             } else {
                 placeholder.push(c);
@@ -634,7 +643,6 @@ impl AttrFormat {
         self.bodyfmt = Some(Box::new(bodyfmt));
     }
 
-
     /// ### This function will support the reprocessing of log information
     ///
     /// ### Example
@@ -652,8 +660,8 @@ impl AttrFormat {
     /// });
     /// ```
     pub fn set_console_body_fmt<F>(&mut self, bodyfmt: F)
-    where 
-    F: Fn(LEVEL, String) -> String + Send + Sync + 'static,
+    where
+        F: Fn(LEVEL, String) -> String + Send + Sync + 'static,
     {
         self.console_bodyfmt = Some(Box::new(bodyfmt));
     }
